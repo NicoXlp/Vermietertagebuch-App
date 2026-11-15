@@ -1643,3 +1643,9 @@ html.splashing #app, html.splashing .dock, html.splashing .backdrop, html.splash
 /* Navigationsleiste bleibt immer an ihrem Platz: kein Nachfedern der ganzen Seite am Anfang/Ende */
 html, body { overscroll-behavior-y: none; }
 .dock { will-change: transform; }
+
+/* Aufgabe: „Alle / wer Zeit hat“ nicht abschneiden – Auswahl breiter als das Datum, auf sehr schmalen Displays untereinander */
+.grid-2.who-due { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+@media (max-width: 359px) { .grid-2.who-due { grid-template-columns: 1fr; } }
+/* „Wer hat was zu tun?“: „· 1 überfällig“ darf umbrechen statt abgeschnitten zu werden */
+.person .stat.load { white-space: normal; overflow: visible; }
