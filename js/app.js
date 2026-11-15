@@ -27,7 +27,7 @@ const haptic = (ms = 8) => { try { navigator.vibrate?.(ms); } catch { /* egal */
 
 // Datum (immer lokale Kalendertage als 'YYYY-MM-DD')
 const today = () => iso(new Date());
-const clock = (ts) => new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(new Date(ts));
+const clock = (ts) => (Number.isFinite(+ts) && ts ? new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(new Date(ts)) : '');
 const fmt = (s, o) => new Intl.DateTimeFormat('de-DE', o).format(parseISO(s));
 function fmtDay(s) {
   const n = daysBetween(today(), s);
@@ -40,6 +40,8 @@ function fmtDay(s) {
 }
 const fmtLong = (s) => fmt(s, { weekday: 'long', day: 'numeric', month: 'long' });
 function relTime(ts) {
+  // Fehlende/kaputte Zeitangabe (ältere Daten) darf nie ein ganzes Fenster abstürzen lassen
+  if (!Number.isFinite(+ts) || !ts) return '';
   const s = (Date.now() - ts) / 1000;
   if (s < 60) return 'gerade eben';
   if (s < 3600) return `vor ${Math.floor(s / 60)} Min.`;
@@ -573,9 +575,11 @@ function openSheet({ title, html, onMount, refresh, onClose }) {
   document.body.appendChild(wrap);
   const panel = $('.sheet', wrap);
   const api = { el: wrap, body: $('.sheet-body', wrap), close, refresh: refresh || null, closed: false };
-  function close() {
+  function close(fromBack = false) {
     if (api.closed) return;
     api.closed = true;
+    // Eigenen Verlaufseintrag wieder entfernen (außer die Zurück-Taste hat ihn schon entfernt)
+    if (fromBack !== true && history.state?.vtSheet) { skipPop++; history.back(); }
     try { onClose?.(api); } catch (e) { console.error(e); }
     panel.style.transform = '';
     wrap.classList.remove('open');
@@ -605,6 +609,8 @@ function openSheet({ title, html, onMount, refresh, onClose }) {
     el.addEventListener('pointercancel', end);
   });
   sheets.push(api);
+  // Zurück-Taste/-Geste (Android, Browser) schließt das Fenster statt die ganze App
+  try { history.pushState({ ...(history.state || {}), vtSheet: Date.now() }, ''); } catch { /* egal */ }
   lockScroll();
   requestAnimationFrame(() => requestAnimationFrame(() => wrap.classList.add('open')));
   onMount?.(api);
@@ -614,6 +620,13 @@ function openSheet({ title, html, onMount, refresh, onClose }) {
   return api;
 }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && sheets.length) sheets[sheets.length - 1].close(); });
+let skipPop = 0;
+window.addEventListener('popstate', (e) => {
+  if (skipPop > 0) { skipPop--; return; }
+  if (sheets.length) sheets[sheets.length - 1].close(true);
+  // Übrig gebliebener Fenster-Eintrag ohne offenes Fenster → einfach weiter zurück
+  else if (e.state?.vtSheet) history.back();
+});
 
 function confirmSheet(text, ok = 'Löschen', danger = true) {
   return new Promise((resolve) => {
@@ -923,12 +936,19 @@ const taskAudience = (t) => (t?.private ? [t.createdBy, t.assignee].filter((x) =
 const openTasks = () => state.tasks.filter((t) => !t.done);
 const myOpenTasks = () => openTasks().filter((t) => t.assignee === state.me || !t.assignee);
 const sortTasks = (a, b) => (a.due || '9999') .localeCompare(b.due || '9999') || (b.important ? 1 : 0) - (a.important ? 1 : 0) || (a.createdAt || 0) - (b.createdAt || 0);
-function nextDue(due, rep) {
+function nextDue(due, rep, monthDay) {
   const d = parseISO(due || today());
   if (rep === 'daily') d.setDate(d.getDate() + 1);
   else if (rep === 'weekly') d.setDate(d.getDate() + 7);
   else if (rep === 'biweekly') d.setDate(d.getDate() + 14);
-  else if (rep === 'monthly') d.setMonth(d.getMonth() + 1);
+  else if (rep === 'monthly') {
+    // Monatlich: gleicher Tag im nächsten Monat – gibt es den nicht (31. → Februar), den letzten Tag nehmen.
+    // monthDay merkt sich den ursprünglichen Tag, damit es nach Februar wieder der 31. wird.
+    const want = monthDay || d.getDate();
+    const y = d.getFullYear(), m = d.getMonth() + 1;
+    const last = new Date(y, m + 1, 0).getDate();
+    return iso(new Date(y, m, Math.min(want, last)));
+  }
   return iso(d);
 }
 function toggleTask(id) {
@@ -937,15 +957,17 @@ function toggleTask(id) {
   haptic(12);
   if (!t.done && t.repeat && t.repeat !== 'none') {
     const ids = membersSorted().map((m) => m.id);
-    let nd = nextDue(t.due, t.repeat);
-    while (nd <= today()) nd = nextDue(nd, t.repeat);
+    const md = t.repeat === 'monthly' ? (t.monthDay || parseISO(t.due || today()).getDate()) : undefined;
+    let nd = nextDue(t.due, t.repeat, md);
+    while (nd <= today()) nd = nextDue(nd, t.repeat, md);
     mutate('tasks', id, (cur) => {
-      let due = nextDue(cur.due, cur.repeat);
-      while (due <= today()) due = nextDue(due, cur.repeat);
+      const cmd = cur.repeat === 'monthly' ? (cur.monthDay || parseISO(cur.due || today()).getDate()) : undefined;
+      let due = nextDue(cur.due, cur.repeat, cmd);
+      while (due <= today()) due = nextDue(due, cur.repeat, cmd);
       let assignee = cur.assignee;
       if (cur.rotate && assignee && ids.length) assignee = ids[(ids.indexOf(assignee) + 1) % ids.length];
       const history = [{ by: state.me, at: Date.now() }, ...(cur.history || [])].slice(0, 30);
-      return { ...cur, due, assignee, history, lastDoneBy: state.me, lastDoneAt: Date.now() };
+      return { ...cur, due, assignee, history, lastDoneBy: state.me, lastDoneAt: Date.now(), ...(cmd ? { monthDay: cmd } : {}) };
     });
     toast(`✓ Erledigt – nächstes Mal ${fmtDay(nd)}`);
     if (!t.private || taskAudience(t).length) emit('task_done', { title: `✅ ${myName()} hat eine Aufgabe erledigt`, body: t.title, tab: 'tasks', to: taskAudience(t) });
@@ -1550,6 +1572,18 @@ function eventBody(p) {
    Neuen Eintrag oben einfügen → die Kachel zeigt immer den neuesten. */
 const NEWS = [
   {
+    id: '2026-11-15-fixes-5',
+    date: '2026-11-15',
+    label: '🛠️ Bug-Fixes',
+    items: [
+      { icon: '↩️', title: 'Zurück-Taste', text: 'Auf Android schließen Zurück-Taste und Zurück-Geste jetzt nur das offene Fenster statt die ganze App.' },
+      { icon: '🔁', title: 'Monatliche Aufgaben', text: 'Aufgaben am 29., 30. oder 31. springen nicht mehr in den Folgemonat – im Februar ist dann einfach der letzte Tag dran.' },
+      { icon: '🧭', title: 'Navigationsleiste', text: 'Bleibt beim Scrollen bis ans Seitenende fest an ihrem Platz – auf allen Geräten.' },
+      { icon: '✂️', title: 'Nichts mehr abgeschnitten', text: '„Alle / wer Zeit hat“ bei neuen Aufgaben und „überfällig“ bei „Wer hat was zu tun?“ sind wieder ganz lesbar.' },
+      { icon: '💬', title: 'Kommentare stabiler', text: 'Ältere Einträge ohne Uhrzeit bringen das Kommentarfenster nicht mehr zum Absturz.' },
+    ],
+  },
+  {
     id: '2026-11-13-fixes-4',
     date: '2026-11-13',
     label: '🛠️ Bug-Fixes',
@@ -1708,7 +1742,7 @@ const VIEWS = {
         const od = openTasks().filter((t) => t.assignee === p.id && t.due && t.due < today()).length;
         return `<button class="person card" data-act="goto-person" data-id="${p.id}">
           <div class="row">${avatar(p.id, 34)}<div class="name">${esc(dn(p.id))}</div></div>
-          <div class="stat">${plural(n, 'offene Aufgabe', 'offene Aufgaben')}${od ? ` · <span style="color:var(--danger)">${od} überfällig</span>` : ''}</div>
+          <div class="stat load">${plural(n, 'offene Aufgabe', 'offene Aufgaben')}${od ? ` · <span style="color:var(--danger)">${od} überfällig</span>` : ''}</div>
           <div class="stat">${p.id === state.me ? '<span class="presence">Das bist du</span>' : presenceText(p.id) || '<span class="presence">–</span>'}</div>
           <div class="meter"><i style="width:${(n / maxLoad) * 100}%"></i></div></button>`;
       }).join('')}</div>
@@ -2564,7 +2598,7 @@ function taskSheet(id, preset = {}) {
     html: `<form id="f">
       <div class="field"><label for="t-title">Was ist zu tun?</label><input id="t-title" required maxlength="140" placeholder="z. B. Treppenhaus putzen" value="${esc(v.title)}" autofocus></div>
       <div class="field"><label for="t-notes">Notizen</label><textarea id="t-notes" maxlength="1000" placeholder="Details (optional)">${esc(v.notes)}</textarea></div>
-      <div class="grid-2">
+      <div class="grid-2 who-due">
         <div class="field"><label for="t-who">Zuständig</label><select id="t-who">${memberOptions(v.assignee)}</select></div>
         <div class="field"><label for="t-due">Fällig am</label><input id="t-due" type="date" value="${esc(v.due || '')}"></div>
       </div>
@@ -2600,7 +2634,8 @@ function taskSheet(id, preset = {}) {
         const dueTxt = data.due ? ` · fällig ${fmtDay(data.due)}` : '';
         const assigned = data.assignee && data.assignee !== state.me && (!t || t.assignee !== data.assignee) ? data.assignee : null;
         if (assigned) emit('task_assigned', { title: `📋 ${myName()} hat dir eine Aufgabe zugeteilt`, body: `${data.title}${dueTxt}`, to: [assigned], tab: 'tasks', tag: `assign-${newId()}` });
-        if (t) mutate('tasks', t.id, (cur) => ({ ...cur, ...data }));
+        // Datum von Hand geändert → gemerkten Monatstag (für „monatlich“) neu bestimmen
+        if (t) mutate('tasks', t.id, (cur) => ({ ...cur, ...data, ...(cur.due !== data.due ? { monthDay: null } : {}) }));
         else {
           const nid = addDoc('tasks', { ...data, done: false, createdBy: state.me, createdAt: Date.now() });
           preset.onCreate?.(nid, data);
