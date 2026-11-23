@@ -405,7 +405,9 @@ function unlockScroll() {
   if (!scrollLocked) return;
   scrollLocked = false;
   document.documentElement.classList.remove('sheet-open');
-  settleViewport();
+  // Erst nach der Ausblend-Animation ausrichten – sonst ruckelt der Hintergrund beim Schließen
+  if (Math.abs(window.scrollY - lockY) > 1) window.scrollTo(0, lockY);
+  setTimeout(() => { if (!scrollLocked) settleViewport(); }, 320);
 }
 
 /* iPhone/iPad: Nach dem Schließen der Tastatur bleibt die Seite manchmal nach oben verschoben –
@@ -575,10 +577,22 @@ window.visualViewport?.addEventListener('scroll', anchorSheetToKeyboard);
 document.addEventListener('focusin', anchorSoon);
 document.addEventListener('focusout', () => setTimeout(anchorSheetToKeyboard, 60));
 // Während ein Fenster offen ist, darf die Seite dahinter nicht wegrutschen (iOS verschiebt sie beim Tippen)
-window.addEventListener('scroll', () => { if (scrollLocked && !typing() && Math.abs(window.scrollY - lockY) > 1) settleViewport(); }, { passive: true });
+window.addEventListener('scroll', () => {
+  if (!scrollLocked || Math.abs(window.scrollY - lockY) <= 1) return;
+  // Tippen in einem Fenster: iPhone schiebt sonst die Seite dahinter weg – und beim Schließen der
+  // Tastatur springt sie sichtbar zurück (Ruckeln). Seite sofort festhalten; das Fenster selbst
+  // sitzt dank anchorSheetToKeyboard ohnehin über der Tastatur.
+  if (typing() && document.activeElement?.closest?.('.sheet-wrap')) { window.scrollTo(0, lockY); return; }
+  if (!typing()) settleViewport();
+}, { passive: true });
+// Tastatur geht zu → Seite dahinter ohne Verzögerung an ihren Platz (kein Nachruckeln)
+document.addEventListener('focusout', (e) => {
+  if (!scrollLocked || !e.target?.closest?.('.sheet-wrap')) return;
+  if (Math.abs(window.scrollY - lockY) > 1) window.scrollTo(0, lockY);
+});
 document.addEventListener('touchmove', (e) => {
   if (!scrollLocked) return;
-  const sc = e.target.closest?.('.sheet-body, .dm-list, textarea, .attach, .emoji-pick, .chips, .viewer');
+  const sc = e.target.closest?.('#clist, .sheet-body, .dm-list, textarea, .attach, .emoji-pick, .chips, .viewer');
   if (!sc || sc.scrollHeight <= sc.clientHeight && sc.scrollWidth <= sc.clientWidth) e.preventDefault();
 }, { passive: false });
 
@@ -3125,14 +3139,16 @@ function commentsSheet(id) {
       <form class="composer mention-field" id="cf"><textarea id="ct" rows="1" maxlength="1000" placeholder="Kommentieren …" aria-label="Kommentar"></textarea><button class="send" aria-label="Senden">${I.send}</button></form>`,
     refresh: (api) => {
       const l = $('#clist', api.el);
-      const atBottom = api.body.scrollHeight - api.body.scrollTop - api.body.clientHeight < 40;
+      const atBottom = l.scrollHeight - l.scrollTop - l.clientHeight < 40;
+      const y = l.scrollTop;
       l.innerHTML = listHtml();
-      if (atBottom) api.body.scrollTop = api.body.scrollHeight;
+      l.scrollTop = atBottom ? l.scrollHeight : y;
     },
     onMount: (api) => {
       const ta = $('#ct', api.el);
       attachMentions(ta);
-      api.body.scrollTop = 0; // Beim Öffnen: Beitrag oben sichtbar, Kommentare darunter
+      api.body.classList.add('c-body');
+      $('#clist', api.el).scrollTop = 0; // Beim Öffnen: Beitrag oben sichtbar, Kommentare darunter
       ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; });
       ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && matchMedia('(hover: hover)').matches) { e.preventDefault(); $('#cf', api.el).requestSubmit(); } });
       $('#cf', api.el).onsubmit = (e) => {
@@ -3147,7 +3163,7 @@ function commentsSheet(id) {
           emit('social', { title: `💬 ${myName()} hat kommentiert`, body: snippet(text, 120), to: [post.author], tab: 'board', tag: `comment-${id}` });
         }
         emitMentions(text, { exclude: post && post.author !== state.me ? [post.author] : [], what: 'einem Kommentar' });
-        setTimeout(() => { api.body.scrollTop = api.body.scrollHeight; }, 80);
+        setTimeout(() => { const l = $('#clist', api.el); l.scrollTop = l.scrollHeight; }, 80);
       };
       $('#clist', api.el).addEventListener('click', async (e) => {
         const d = e.target.closest('[data-cdel]');
