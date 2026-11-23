@@ -1649,3 +1649,11 @@ html, body { overscroll-behavior-y: none; }
 @media (max-width: 359px) { .grid-2.who-due { grid-template-columns: 1fr; } }
 /* „Wer hat was zu tun?“: „· 1 überfällig“ darf umbrechen statt abgeschnitten zu werden */
 .person .stat.load { white-space: normal; overflow: visible; }
+
+/* Fenster beim Tippen direkt über der Tastatur (statt vom iPhone ganz nach oben geschoben) */
+@media (max-width: 699px) {
+  .sheet-wrap.kb-anchored { top: var(--kb-top, 0px); bottom: auto; height: var(--kb-h, 100%); align-items: flex-end; padding-top: 8px; padding-bottom: 8px; }
+  .sheet-wrap.kb-anchored .sheet { max-height: calc(var(--kb-h, 100dvh) - 16px); }
+}
+/* Kommentar-Vorschau unter Beiträgen wieder linksbündig */
+.last-comment { justify-content: flex-start; align-items: flex-start; text-align: left; }
