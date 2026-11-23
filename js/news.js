@@ -5,6 +5,14 @@
 // Bitte keine Browser-APIs hier verwenden.
 export const NEWS = [
   {
+    id: '2026-11-23-pin',
+    date: '2026-11-23',
+    label: '❗ Wichtiges',
+    items: [
+      { icon: '🔒', title: 'Schütze dein Profil mit einer PIN', text: 'Ab sofort kannst du dein Profil mit einer persönlichen PIN aus 4 bis 8 Ziffern schützen, die du dir selbst aussuchst. Dann kann niemand mehr aus Versehen in dein Profil wechseln. Du findest die Einstellung unter „Profil wechseln“. Die Einstellung ist freiwillig, aber sie schützt deine Privatsphäre, zum Beispiel deine Privatchats.', act: 'switch-user', btn: 'PIN festlegen' },
+    ],
+  },
+  {
     id: '2026-11-23-sticker-pin',
     date: '2026-11-23',
     label: '✨ Neue Funktionen',

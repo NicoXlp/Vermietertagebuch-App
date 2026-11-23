@@ -1714,7 +1714,7 @@ function eventBody(p) {
 function newsCard() {
   if (!NEWS.length) return '';
   const entry = (n, i) => `<div class="news-entry">
-      <div class="news-meta"><span class="news-badge ${i ? 'old' : ''}">${esc(n.label || '✨ Neue Funktionen')}</span><span class="small muted">${esc(fmt(n.date, { day: 'numeric', month: 'long' }))}</span></div>
+      <div class="news-meta"><span class="news-badge ${i ? 'old' : ''} ${/wichtig/i.test(n.label || '') ? 'important' : ''}">${esc(n.label || '✨ Neue Funktionen')}</span><span class="small muted">${esc(fmt(n.date, { day: 'numeric', month: 'long' }))}</span></div>
       <div class="news-list">${n.items.map((it) => `<div class="news-item"><span class="news-ico">${it.icon}</span>
         <div class="main"><div class="title">${esc(it.title)}</div><div class="small muted">${esc(it.text)}</div>
         ${it.act ? `<button class="link news-btn" data-act="${it.act}" ${it.v ? `data-v="${it.v}"` : ''}>${esc(it.btn)} ›</button>` : ''}</div></div>`).join('')}</div>
@@ -4013,6 +4013,7 @@ function memberSheet(id, { asMe = false } = {}) {
       <div class="row" style="gap:8px;margin-bottom:14px"><button type="button" class="btn block primary" id="m-dm">${I.dm}Nachricht</button><button type="button" class="btn block" id="m-task">${I.tasks}Aufgabe</button></div>
       <div class="field nick-field"><label for="m-nick">🏷️ Dein Spitzname für ${esc(m.name)}</label><input id="m-nick" maxlength="30" placeholder="z. B. Schatz, Flocke …" value="${esc(nickOf(m.id))}">
         <p class="small muted" style="margin:6px 4px 0">Nur du siehst ihn – überall in der App statt „${esc(m.name)}“.</p></div>
+      ${hasPin(m.id) && houseAdmin() === state.me ? '<button type="button" class="btn block sm" id="m-pinreset" style="margin-bottom:8px">🔓 PIN zurücksetzen</button>' : ''}
       <button type="button" class="btn block sm danger-soft" id="m-del">${I.door}Aus dem Haus entfernen</button>` : ''}${!m && !asMe ? '<p class="small muted" style="margin-top:0">Für Personen ohne eigenes Gerät – sie können trotzdem Aufgaben und Müll-Dienste bekommen.</p>' : ''}${other ? '' : memberForm(v, m ? 'Speichern' : 'Hinzufügen')}`,
     onMount: (api) => {
       const f = other ? api.el : bindMemberForm(api.el, v, (val) => {
@@ -4036,6 +4037,13 @@ function memberSheet(id, { asMe = false } = {}) {
         toast(val ? `🏷️ ${m.name} heißt für dich jetzt „${val}“` : 'Spitzname entfernt');
       });
       nickIn?.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); nickIn.blur(); } });
+      $('#m-pinreset', api.el)?.addEventListener('click', async () => {
+        if (await confirmSheet(`PIN von ${m.name} zurücksetzen? Das Profil ist danach nicht mehr geschützt, ${m.name} kann eine neue PIN festlegen.`, 'Zurücksetzen')) {
+          mutate('members', m.id, (x) => { const n = { ...x }; delete n.pin; return n; });
+          toast(`🔓 PIN von ${m.name} zurückgesetzt`);
+          $('#m-pinreset', api.el)?.remove();
+        }
+      });
       $('#m-del', f)?.addEventListener('click', async () => {
         if (await confirmSheet(`${m.name} aus dem Haus entfernen? Zugewiesene Aufgaben werden „für alle“.`)) {
           state.tasks.filter((t) => t.assignee === m.id).forEach((t) => mutate('tasks', t.id, (x) => ({ ...x, assignee: null })));
@@ -4406,8 +4414,128 @@ function showWelcome() {
   $('#w-cloud')?.addEventListener('click', () => cloudSheet());
 }
 
+/* ─── Profil-PIN: schützt ein Profil davor, dass andere es aus Versehen öffnen ──────────────────
+   Gespeichert wird nie die PIN selbst, sondern nur ein gesalzener PBKDF2-Hash im Profil. */
+const pinBytes = (b64) => Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+const pinB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+async function pinHash(pin, saltB64, iter = 120000) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pin), 'PBKDF2', false, ['deriveBits']);
+  return pinB64(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: pinBytes(saltB64), iterations: iter }, key, 256));
+}
+async function pinMake(pin) {
+  const salt = pinB64(crypto.getRandomValues(new Uint8Array(16)));
+  return { salt, hash: await pinHash(pin, salt), iter: 120000, len: pin.length, at: Date.now() };
+}
+async function pinCheck(m, pin) {
+  if (!m?.pin?.hash) return true;
+  try { return (await pinHash(pin, m.pin.salt, m.pin.iter || 120000)) === m.pin.hash; } catch { return false; }
+}
+const hasPin = (id) => !!member(id)?.pin?.hash;
+
+/** PIN-Eingabe mit Ziffernfeld. mode: 'check' (prüft gegen Profil `id`) oder 'new' (gibt die gewählte PIN zurück) */
+function pinSheet({ id = null, mode = 'check', title, sub = '' }) {
+  return new Promise((resolve) => {
+    let val = '', done = false, busy = false;
+    const need = mode === 'check' ? member(id)?.pin?.len || 0 : 0; // bekannte Länge → sofort prüfen
+    const lockKey = `pinLock_${id}`;
+    let onKey = () => {};
+    const s = openSheet({
+      title,
+      html: `<div class="pin-box">
+          ${id && mode === 'check' ? `<div class="pin-av">${avatar(id, 64)}</div>` : ''}
+          ${sub ? `<p class="small muted center pin-sub">${esc(sub)}</p>` : ''}
+          <div class="pin-dots" id="pin-dots" aria-live="polite"></div>
+          <p class="small center pin-msg" id="pin-msg"></p>
+          <div class="pin-keys" id="pin-keys">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => `<button type="button" data-k="${n}">${n}</button>`).join('')}
+            ${mode === 'check' && id !== state.me ? '<button type="button" class="pin-aux" data-forgot>Vergessen?</button>' : '<span></span>'}
+            <button type="button" data-k="0">0</button>
+            <button type="button" class="pin-aux" data-k="del" aria-label="Löschen">⌫</button></div>
+          ${need ? '' : '<div class="sheet-actions"><button class="btn primary block" type="button" id="pin-ok" disabled>Weiter</button></div>'}
+        </div>`,
+      onClose: () => { document.removeEventListener('keydown', onKey); if (!done) resolve(null); },
+      onMount: (api) => {
+        const dots = $('#pin-dots', api.el), msg = $('#pin-msg', api.el), ok = $('#pin-ok', api.el);
+        const draw = () => {
+          const n = need || Math.max(4, val.length);
+          dots.innerHTML = Array.from({ length: n }, (_, i) => `<i class="${i < val.length ? 'on' : ''}"></i>`).join('');
+          if (ok) ok.disabled = val.length < 4;
+        };
+        const fail = (t) => { msg.textContent = t; msg.classList.add('err'); dots.classList.remove('shake'); void dots.offsetWidth; dots.classList.add('shake'); haptic(30); val = ''; draw(); };
+        const submit = async () => {
+          if (busy) return;
+          if (mode === 'new') { done = true; resolve(val); api.close(); return; }
+          const lock = LS.get(lockKey, null);
+          if (lock && lock.until > Date.now()) return fail(`Zu viele Versuche – bitte ${Math.ceil((lock.until - Date.now()) / 1000)} s warten`);
+          busy = true; msg.textContent = ''; msg.classList.remove('err');
+          const good = await pinCheck(member(id), val);
+          busy = false;
+          if (good) { LS.del(lockKey); done = true; haptic(12); resolve(true); api.close(); return; }
+          const tries = (lock?.tries || 0) + 1;
+          LS.set(lockKey, tries >= 5 ? { tries: 0, until: Date.now() + 30_000 } : { tries, until: 0 });
+          fail(tries >= 5 ? 'Zu viele Versuche – bitte 30 s warten' : 'Falsche PIN – versuch es nochmal');
+        };
+        const press = (k) => {
+          if (busy) return;
+          if (k === 'del') val = val.slice(0, -1);
+          else if (val.length < 8) val += k;
+          msg.textContent = ''; msg.classList.remove('err');
+          draw(); haptic(5);
+          if (need && val.length === need) submit();
+        };
+        $('#pin-keys', api.el).addEventListener('click', (e) => {
+          if (e.target.closest('[data-forgot]')) {
+            const adm = houseAdmin();
+            return toast(adm && adm !== id ? `🔑 ${dn(adm)} kann die PIN unter „Haus“ im Profil von ${dn(id)} zurücksetzen` : '🔑 Die Hausverwaltung kann die PIN zurücksetzen', 5000);
+          }
+          const b = e.target.closest('[data-k]'); if (b) press(b.dataset.k);
+        });
+        ok?.addEventListener('click', submit);
+        onKey = (e) => {
+          if (sheets.at(-1) !== api) return;
+          if (/^[0-9]$/.test(e.key)) { e.preventDefault(); press(e.key); } else if (e.key === 'Backspace') { e.preventDefault(); press('del'); } else if (e.key === 'Enter' && val.length >= 4) { e.preventDefault(); submit(); }
+        };
+        document.addEventListener('keydown', onKey);
+        draw();
+      },
+    });
+    void s;
+  });
+}
+
+/** Eigene PIN festlegen, ändern oder entfernen (unter „Profil wechseln“) */
+async function pinSetup() {
+  const me = state.me;
+  if (!me || !member(me)) return;
+  if (hasPin(me) && !(await pinSheet({ id: me, title: '🔒 Aktuelle PIN', sub: 'Bestätige zuerst deine aktuelle PIN' }))) return;
+  const a = await pinSheet({ mode: 'new', title: hasPin(me) ? '🔒 Neue PIN wählen' : '🔒 PIN festlegen', sub: 'Wähle 4 bis 8 Ziffern, die du dir gut merken kannst' });
+  if (!a) return;
+  const b = await pinSheet({ mode: 'new', title: '🔒 PIN wiederholen', sub: 'Gib deine neue PIN zur Sicherheit nochmal ein' });
+  if (!b) return;
+  if (a !== b) return toast('Die PINs stimmen nicht überein – bitte nochmal', 3500);
+  const pin = await pinMake(a);
+  mutate('members', me, (x) => ({ ...x, pin }));
+  toast('🔒 Dein Profil ist jetzt mit PIN geschützt');
+}
+async function pinRemove() {
+  const me = state.me;
+  if (!hasPin(me)) return;
+  if (!(await pinSheet({ id: me, title: '🔓 PIN entfernen', sub: 'Bestätige deine PIN, um den Schutz auszuschalten' }))) return;
+  mutate('members', me, (x) => { const n = { ...x }; delete n.pin; return n; });
+  toast('🔓 PIN-Schutz ausgeschaltet');
+}
+
 function whoAreYou(switching = false) {
   const synced = () => state.synced.has('members');
+  const pinSetHtml = () => {
+    const me = state.me && member(state.me);
+    if (!me) return '';
+    const on = hasPin(state.me);
+    return `<div class="card tight pin-set">
+      <div class="pin-set-head"><span class="pin-set-ico">${on ? '🔒' : '🔓'}</span><div class="main"><div class="title">PIN-Schutz für „${esc(me.name)}“</div>
+        <div class="small muted">${on ? 'Aktiv: Zum Wechseln in dein Profil wird deine PIN abgefragt.' : 'Schütze dein Profil mit einer eigenen PIN, damit niemand aus Versehen hineinwechselt.'}</div></div></div>
+      <div class="row pin-set-btns">${on ? '<button type="button" class="btn sm" data-pinset>PIN ändern</button><button type="button" class="btn sm danger-soft" data-pinoff>PIN entfernen</button>' : '<button type="button" class="btn sm primary" data-pinset>🔒 PIN festlegen</button>'}</div>
+    </div>`;
+  };
   const pickHtml = () => {
     const people = membersSorted();
     if (!people.length) {
@@ -4415,7 +4543,7 @@ function whoAreYou(switching = false) {
         ? '<p class="muted center" style="margin:0">Noch niemand im Haus – du bist die erste Person! Erstelle unten dein Profil.</p>'
         : '<div class="center" style="padding:10px 0"><div class="spinner" style="margin:0 auto 10px"></div><p class="small muted" style="margin:0">Profile werden geladen …</p></div>';
     }
-    return `<div class="profile-pick">${people.map((p) => `<button data-pick="${p.id}" class="${p.id === state.me ? 'on' : ''}">${avatar(p.id, 56)}<span>${esc(p.name)}</span>${presenceText(p.id) && p.id !== state.me ? `<span class="small">${presenceText(p.id)}</span>` : ''}</button>`).join('')}</div>`;
+    return `<div class="profile-pick">${people.map((p) => `<button data-pick="${p.id}" class="${p.id === state.me ? 'on' : ''}">${hasPin(p.id) ? '<span class="pin-lock" aria-label="mit PIN geschützt">🔒</span>' : ''}${avatar(p.id, 56)}<span>${esc(p.name)}</span>${presenceText(p.id) && p.id !== state.me ? `<span class="small">${presenceText(p.id)}</span>` : ''}</button>`).join('')}</div>`;
   };
   const s = openSheet({
     title: switching ? 'Profil wechseln' : 'Willkommen im Haus! 👋',
@@ -4423,6 +4551,7 @@ function whoAreYou(switching = false) {
         <div class="label" style="margin:0 4px 8px">Du bist schon dabei? Wähle dein Profil:</div>
         <div id="who-pick">${pickHtml()}</div>
       </div>
+      ${switching ? `<div id="who-pin">${pinSetHtml()}</div>` : ''}
       <div class="divider">oder</div>
       <button type="button" class="btn block" id="who-new-btn">${I.plus}Neues Profil erstellen</button>
       <div id="who-new" hidden>
@@ -4431,14 +4560,22 @@ function whoAreYou(switching = false) {
       </div>`,
     refresh: (api) => {
       $('#who-pick', api.el).innerHTML = pickHtml();
+      const wp = $('#who-pin', api.el); if (wp) wp.innerHTML = pinSetHtml();
       // Erst-Person: Formular direkt zeigen
       if (synced() && !state.members.length) { $('#who-new', api.el).hidden = false; $('#who-new-btn', api.el).hidden = true; }
     },
     onMount: (api) => {
-      api.body.addEventListener('click', (e) => {
+      api.body.addEventListener('click', async (e) => {
+        if (e.target.closest('[data-pinset]')) return pinSetup();
+        if (e.target.closest('[data-pinoff]')) return pinRemove();
         const b = e.target.closest('[data-pick]');
         if (b) {
-          state.me = b.dataset.pick; LS.set('me', state.me); api.close(); render(); beat(true);
+          const pid = b.dataset.pick;
+          if (pid !== state.me && hasPin(pid)) {
+            if (!(await pinSheet({ id: pid, title: `🔒 ${member(pid)?.name || 'Profil'}`, sub: 'Dieses Profil ist geschützt. Gib die PIN ein.' }))) return;
+            if (api.closed) return;
+          }
+          state.me = pid; LS.set('me', state.me); api.close(); render(); beat(true);
           syncPushSub().catch(() => {});
           toast(`👋 Hallo ${member(state.me)?.name}!`);
           return;

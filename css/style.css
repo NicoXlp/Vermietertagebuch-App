@@ -1860,3 +1860,30 @@ html.xmas .profile-photo .av::before { display: none; }
 .dm-pin.on svg { fill: currentColor; transform: rotate(0deg); }
 .dm-pin:active svg { transform: scale(.85); }
 .dm-row.pinned { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+
+/* ─── Profil-PIN ─── */
+.news-badge.important, .news-badge.old.important { background: #ff9f0a; color: #1a1000; }
+.profile-pick button { position: relative; }
+.pin-lock { position: absolute; top: 2px; right: 6px; font-size: 14px; z-index: 2; filter: drop-shadow(0 1px 2px rgba(0,0,0,.3)); }
+.pin-set { margin: 16px 0 4px; padding: 14px; }
+.pin-set-head { display: flex; gap: 12px; align-items: flex-start; }
+.pin-set-ico { font-size: 24px; line-height: 1.1; }
+.pin-set-head .title { font-weight: 700; }
+.pin-set-btns { gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.pin-box { display: flex; flex-direction: column; align-items: center; }
+.pin-av { margin: 0 0 10px; }
+.pin-sub { margin: 0 8px 14px; max-width: 300px; }
+.pin-dots { display: flex; gap: 14px; justify-content: center; min-height: 18px; margin: 4px 0 6px; }
+.pin-dots i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--text-3); transition: background .15s, border-color .15s, transform .15s; }
+.pin-dots i.on { background: var(--accent); border-color: var(--accent); transform: scale(1.1); }
+.pin-dots.shake { animation: pinShake .4s; }
+@keyframes pinShake { 20%, 60% { transform: translateX(-9px); } 40%, 80% { transform: translateX(9px); } }
+.pin-msg { min-height: 1.3em; margin: 4px 0 10px; color: var(--text-2); }
+.pin-msg.err { color: var(--danger, #ff453a); font-weight: 600; }
+.pin-keys { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px 20px; justify-content: center; margin-bottom: 8px; }
+.pin-keys button { width: 72px; height: 72px; border-radius: 50%; border: 0; background: var(--fill); color: var(--text); font-size: 28px; font-weight: 500; display: grid; place-items: center; cursor: pointer; transition: transform .15s, background .15s; }
+.pin-keys button:active { transform: scale(.92); background: color-mix(in srgb, var(--accent) 25%, var(--fill)); }
+.pin-keys .pin-aux { background: none; font-size: 15px; font-weight: 600; color: var(--text-2); }
+.pin-keys .pin-aux[data-k=del] { font-size: 24px; }
+.pin-box .sheet-actions { width: 100%; max-width: 300px; }
+@media (max-height: 700px) { .pin-keys { grid-template-columns: repeat(3, 62px); gap: 8px 18px; } .pin-keys button { width: 62px; height: 62px; font-size: 24px; } .pin-av { display: none; } }
