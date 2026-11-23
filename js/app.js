@@ -571,18 +571,35 @@ function glideSheet(wrap, change) {
 function anchorSheetToKeyboard() {
   const vv = window.visualViewport;
   const wrap = document.activeElement?.closest?.('.sheet-wrap:not(.dm-sheet)');
+  const pre = (w) => Date.now() - (+w.dataset.preAt || 0) < 900; // gerade beim Antippen vorbereitet
   document.querySelectorAll('.sheet-wrap.kb-anchored').forEach((w) => {
-    if (w !== wrap) glideSheet(w, () => { w.classList.remove('kb-anchored'); w.style.removeProperty('--kb-top'); w.style.removeProperty('--kb-h'); });
+    if (w !== wrap && !pre(w)) glideSheet(w, () => { w.classList.remove('kb-anchored'); w.style.removeProperty('--kb-top'); w.style.removeProperty('--kb-h'); });
   });
   if (!vv || !wrap || !typing() || !matchMedia('(max-width: 699px) and (hover: none)').matches) return;
   const open = window.innerHeight - vv.height > 120; // Tastatur sichtbar
-  if (!open) { if (wrap.classList.contains('kb-anchored')) glideSheet(wrap, () => wrap.classList.remove('kb-anchored')); return; }
+  if (!open) { if (wrap.classList.contains('kb-anchored') && !pre(wrap)) glideSheet(wrap, () => wrap.classList.remove('kb-anchored')); return; }
+  LS.set('kbH', Math.round(window.innerHeight - vv.height)); // Tastaturhöhe merken – nächstes Mal passt die Vorab-Position genau
   const top = `${Math.round(vv.offsetTop)}px`, h = `${Math.round(vv.height)}px`;
   // Nur umstellen, wenn sich wirklich etwas geändert hat (sonst unnötiges Neuzeichnen = Ruckeln)
   if (wrap.classList.contains('kb-anchored') && wrap.style.getPropertyValue('--kb-top') === top && wrap.style.getPropertyValue('--kb-h') === h) return;
   glideSheet(wrap, () => {
     wrap.style.setProperty('--kb-top', top);
     wrap.style.setProperty('--kb-h', h);
+    wrap.classList.add('kb-anchored');
+  });
+}
+/* Schon beim Antippen (bevor die Tastatur kommt) das Fenster dorthin setzen, wo es über der Tastatur
+   sitzen wird. Dann muss das iPhone die Ansicht nicht hochschieben – kein Springen, kein Gegeneinander. */
+function preAnchorSheet(el) {
+  if (!isTextField(el)) return;
+  const wrap = el.closest?.('.sheet-wrap:not(.dm-sheet)');
+  if (!wrap || wrap.classList.contains('kb-anchored') || !matchMedia('(max-width: 699px) and (hover: none)').matches) return;
+  const kbH = LS.get('kbH', 0) > 120 ? LS.get('kbH') : Math.round(window.innerHeight * 0.46);
+  wrap.dataset.preAt = Date.now();
+  setTimeout(anchorFrame, 1000); // kommt doch keine Tastatur (z. B. externe Tastatur), wieder normal hinsetzen
+  glideSheet(wrap, () => {
+    wrap.style.setProperty('--kb-top', '0px');
+    wrap.style.setProperty('--kb-h', `${Math.max(240, window.innerHeight - kbH)}px`);
     wrap.classList.add('kb-anchored');
   });
 }
@@ -595,20 +612,24 @@ window.visualViewport?.addEventListener('scroll', anchorFrame);
 // der Tastatur-Animation ständig neu berechnen (Ruckeln). Sieht fast gleich aus.
 document.addEventListener('focusin', (e) => {
   if (isTextField(e.target) && e.target.closest?.('.sheet-wrap')) document.documentElement.classList.add('typing-sheet');
+  preAnchorSheet(e.target); // gleich beim Aktivieren, noch bevor die Tastatur hochfährt
   anchorSoon();
 });
 document.addEventListener('focusout', () => setTimeout(() => {
-  if (!typing()) document.documentElement.classList.remove('typing-sheet');
+  if (!typing()) {
+    document.documentElement.classList.remove('typing-sheet');
+    document.querySelectorAll('.sheet-wrap[data-pre-at]').forEach((w) => delete w.dataset.preAt);
+  }
   anchorFrame();
 }, 60));
 // Während ein Fenster offen ist, darf die Seite dahinter nicht wegrutschen (iOS verschiebt sie beim Tippen)
-let holdRaf = 0;
 window.addEventListener('scroll', () => {
   if (!scrollLocked || Math.abs(window.scrollY - lockY) <= 1) return;
   // Tippen in einem Fenster: iPhone schiebt sonst die Seite dahinter weg – und beim Schließen der
   // Tastatur springt sie sichtbar zurück (Ruckeln). Seite sofort festhalten; das Fenster selbst
   // sitzt dank anchorSheetToKeyboard ohnehin über der Tastatur.
-  if (typing() && document.activeElement?.closest?.('.sheet-wrap')) { cancelAnimationFrame(holdRaf); holdRaf = requestAnimationFrame(() => window.scrollTo(0, lockY)); return; }
+  // Beim Tippen nicht gegen das iPhone ansteuern (das ließ das Fenster springen) – nach dem Tippen wird zurückgesetzt
+  if (typing() && document.activeElement?.closest?.('.sheet-wrap')) return;
   if (!typing()) settleViewport();
 }, { passive: true });
 // Tastatur geht zu → Seite dahinter ohne Verzögerung an ihren Platz (kein Nachruckeln)
@@ -650,8 +671,12 @@ function openSheet({ title, html, onMount, refresh, onClose }) {
     setTimeout(fixIosGap, 50);
     if (!sheets.length) setTimeout(() => { if (!sheets.length) unlockScroll(); }, 0);
   }
+  // Nur schließen, wenn der Finger auch AUF dem Hintergrund angesetzt hat (nicht, wenn das Fenster
+  // währenddessen weggerückt ist, z. B. beim Antippen des Eingabefelds über der Tastatur)
+  let downOnBackdrop = false;
+  wrap.addEventListener('pointerdown', (e) => { downOnBackdrop = e.target.classList.contains('sheet-backdrop'); }, true);
   wrap.addEventListener('click', (e) => {
-    if (e.target.classList.contains('sheet-backdrop') || e.target.closest('[data-close]')) close();
+    if ((e.target.classList.contains('sheet-backdrop') && downOnBackdrop) || e.target.closest('[data-close]')) close();
   });
   // Nach unten wischen zum Schließen
   let y0 = null, dy = 0;
