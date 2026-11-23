@@ -21,6 +21,7 @@ export const NEWS = [
     label: '🛠️ Bug-Fixes',
     items: [
       { icon: '🧭', title: 'Navigationsleiste auf iPad & PC', text: 'Auf iPads, Tablets und PCs sitzt die Navigationsleiste jetzt senkrecht am rechten Rand, mittig und ohne etwas zu verdecken. Auf Handys bleibt sie unten.' },
+      { icon: '🫧', title: 'Sanfter Übergang mit Tastatur', text: 'Wenn die Tastatur hochfährt, gleitet das Fenster jetzt weich nach oben, statt aufzuploppen.' },
       { icon: '👤', title: 'Profil öffnen', text: 'Das Fenster „Mein Profil“ verschiebt sich beim ersten Öffnen nicht mehr.' },
       { icon: '👆', title: 'Scrollen in „Mein Profil“', text: 'In den Profileinstellungen kann man jetzt überall scrollen, auch wenn der Finger auf der Emoji- oder Farbauswahl aufsetzt.' },
       { icon: '🧭', title: 'Fenster & Navigationsleiste', text: 'Fenster überlappen die Navigationsleiste nicht mehr. Sie bleibt darunter immer frei sichtbar.' },
