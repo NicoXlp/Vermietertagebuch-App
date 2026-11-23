@@ -3118,14 +3118,30 @@ function commentsSheet(id) {
         ${body}
       </div>
       <div class="c-divider">${cs.length ? plural(cs.length, 'Kommentar', 'Kommentare') : 'Kommentare'}</div>`;
-    return origin + (cs.length ? cs.map((c) => `<div class="comment">${avatar(c.author, 32)}<div style="min-width:0;flex:1">
-        <div class="bubble"><div class="who">${esc(dn(c.author))}</div><div class="txt">${richText(c.text)}</div></div>
-        <div class="meta"><span>${relTime(c.at)}</span>${c.author === state.me ? `<button data-cdel="${c.id}">Löschen</button>` : ''}</div></div></div>`).join('')
+    const byId = Object.fromEntries(cs.map((c) => [c.id, c]));
+    return origin + (cs.length ? cs.map((c) => {
+      const likes = c.likes || [];
+      const liked = likes.includes(state.me);
+      const reacts = Object.entries(c.reactions || {}).filter(([, v]) => v.length).sort((a, b) => b[1].length - a[1].length);
+      const q = c.replyTo ? byId[c.replyTo] : null;
+      const quote = c.replyTo ? `<button type="button" class="c-quote" data-cjump="${esc(c.replyTo)}">↪ ${q ? `<b>${esc(dn(q.author))}</b> ${esc(snippet(q.text, 60))}` : 'Kommentar gelöscht'}</button>` : '';
+      return `<div class="comment ${c.replyTo ? 'is-reply' : ''}" id="c-${esc(c.id)}">${avatar(c.author, 32)}<div style="min-width:0;flex:1">
+        <div class="bubble">${quote}<div class="who">${esc(dn(c.author))}</div><div class="txt">${richText(c.text)}</div></div>
+        ${reacts.length ? `<div class="c-reacts">${reacts.map(([em, v]) => `<button type="button" class="reaction ${v.includes(state.me) ? 'mine' : ''}" data-creact="${esc(c.id)}" data-e="${esc(em)}" title="${esc(v.map(nameOf).join(', '))}"><span class="e">${esc(em)}</span>${v.length}</button>`).join('')}</div>` : ''}
+        <div class="meta"><span>${relTime(c.at)}</span>
+          <button type="button" class="c-like ${liked ? 'on' : ''}" data-clike="${esc(c.id)}" aria-pressed="${liked}" title="${esc(likes.map(nameOf).join(', '))}">${liked ? '❤️' : '🤍'}${likes.length ? ` ${likes.length}` : ''}</button>
+          <button type="button" data-creply="${esc(c.id)}">Antworten</button>
+          <button type="button" class="c-react-btn" data-cpick="${esc(c.id)}" aria-label="Reagieren">😊</button>
+          ${c.author === state.me ? `<button type="button" data-cdel="${esc(c.id)}">Löschen</button>` : ''}</div>
+        <div class="c-picker" data-picker="${esc(c.id)}" hidden>${QUICK_REACTIONS.map((em) => `<button type="button" data-creact="${esc(c.id)}" data-e="${em}">${em}</button>`).join('')}</div>
+      </div></div>`;
+    }).join('')
       : '<div class="empty c-empty">Noch keine Kommentare. Schreib den ersten! 💬</div>');
   };
   openSheet({
     title: 'Kommentare',
     html: `<div id="clist">${listHtml()}</div>
+      <div class="c-replybar" id="c-rb" hidden></div>
       <form class="composer mention-field" id="cf"><textarea id="ct" rows="1" maxlength="1000" placeholder="Kommentieren …" aria-label="Kommentar"></textarea><button class="send" aria-label="Senden">${I.send}</button></form>`,
     refresh: (api) => {
       const l = $('#clist', api.el);
@@ -3147,17 +3163,75 @@ function commentsSheet(id) {
         if (!text) return;
         ta.value = ''; ta.style.height = '';
         haptic(8);
-        mutate('feed', id, (p) => ({ ...p, comments: [...(p.comments || []), { id: newId(), author: state.me, text, at: Date.now() }] }));
+        const replyTo = reply;
+        const target = replyTo ? (state.feed.find((x) => x.id === id)?.comments || []).find((c) => c.id === replyTo) : null;
+        mutate('feed', id, (p) => ({ ...p, comments: [...(p.comments || []), { id: newId(), author: state.me, text, at: Date.now(), ...(replyTo ? { replyTo } : {}) }] }));
+        setReply(null);
         const post = state.feed.find((x) => x.id === id);
-        if (post && post.author !== state.me) {
+        if (target && target.author !== state.me) {
+          emit('social', { title: `↩️ ${myName()} hat auf deinen Kommentar geantwortet`, body: snippet(text, 120), to: [target.author], tab: 'board', tag: `creply-${id}` });
+        }
+        if (post && post.author !== state.me && post.author !== target?.author) {
           emit('social', { title: `💬 ${myName()} hat kommentiert`, body: snippet(text, 120), to: [post.author], tab: 'board', tag: `comment-${id}` });
         }
         emitMentions(text, { exclude: post && post.author !== state.me ? [post.author] : [], what: 'einem Kommentar' });
         setTimeout(() => { const l = $('#clist', api.el); l.scrollTop = l.scrollHeight; }, 80);
       };
+      // Antworten, Liken, Reagieren
+      let reply = null;
+      const rb = $('#c-rb', api.el);
+      const setReply = (cid) => {
+        reply = cid;
+        const c = cid ? (state.feed.find((x) => x.id === id)?.comments || []).find((x) => x.id === cid) : null;
+        rb.hidden = !c;
+        rb.innerHTML = c ? `<span>↪ Antwort an <b>${esc(dn(c.author))}</b>: ${esc(snippet(c.text, 50))}</span><button type="button" aria-label="Antwort abbrechen">✕</button>` : '';
+        ta.placeholder = c ? `Antwort an ${dn(c.author)} …` : 'Kommentieren …';
+      };
+      rb.addEventListener('click', (e) => { if (e.target.closest('button')) setReply(null); });
+      const editComment = (cid, fn) => mutate('feed', id, (p) => ({ ...p, comments: (p.comments || []).map((c) => (c.id === cid ? fn({ ...c }) : c)) }));
+      const commentOf = (cid) => (state.feed.find((x) => x.id === id)?.comments || []).find((c) => c.id === cid);
       $('#clist', api.el).addEventListener('click', async (e) => {
         const d = e.target.closest('[data-cdel]');
-        if (d && await confirmSheet('Kommentar löschen?')) mutate('feed', id, (p) => ({ ...p, comments: (p.comments || []).filter((c) => c.id !== d.dataset.cdel) }));
+        if (d) { if (await confirmSheet('Kommentar löschen?')) mutate('feed', id, (p) => ({ ...p, comments: (p.comments || []).filter((c) => c.id !== d.dataset.cdel) })); return; }
+        const lk = e.target.closest('[data-clike]');
+        if (lk) {
+          const c = commentOf(lk.dataset.clike); if (!c) return;
+          const had = (c.likes || []).includes(state.me);
+          haptic(had ? 6 : 12);
+          editComment(c.id, (x) => ({ ...x, likes: had ? (x.likes || []).filter((u) => u !== state.me) : [...(x.likes || []), state.me] }));
+          if (!had && c.author !== state.me) emit('social', { title: `❤️ ${myName()} gefällt dein Kommentar`, body: snippet(c.text, 120), to: [c.author], tab: 'board', tag: `clike-${c.id}` });
+          return;
+        }
+        const rp = e.target.closest('[data-creply]');
+        if (rp) { setReply(rp.dataset.creply); ta.focus(); return; }
+        const pk = e.target.closest('[data-cpick]');
+        if (pk) {
+          const box = $(`[data-picker="${CSS.escape(pk.dataset.cpick)}"]`, api.el);
+          $$('.c-picker', api.el).forEach((x) => { if (x !== box) x.hidden = true; });
+          if (box) box.hidden = !box.hidden;
+          return;
+        }
+        const re = e.target.closest('[data-creact]');
+        if (re) {
+          const c = commentOf(re.dataset.creact); if (!c) return;
+          const em = re.dataset.e;
+          const had = (c.reactions?.[em] || []).includes(state.me);
+          haptic(8);
+          editComment(c.id, (x) => {
+            const r = { ...(x.reactions || {}) };
+            // pro Person eine Reaktion: andere Emojis entfernen, gleiches Emoji erneut = zurücknehmen
+            Object.keys(r).forEach((k) => { r[k] = (r[k] || []).filter((u) => u !== state.me); if (!r[k].length) delete r[k]; });
+            if (!had) r[em] = [...(r[em] || []), state.me];
+            return { ...x, reactions: r };
+          });
+          if (!had && c.author !== state.me) emit('social', { title: `${em} ${myName()} hat auf deinen Kommentar reagiert`, body: snippet(c.text, 120), to: [c.author], tab: 'board', tag: `creact-${c.id}` });
+          return;
+        }
+        const j = e.target.closest('[data-cjump]');
+        if (j) {
+          const el = $(`#c-${CSS.escape(j.dataset.cjump)}`, api.el);
+          if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+        }
       });
     },
   });
