@@ -4035,14 +4035,6 @@ function applyTheme() {
   if (t === 'auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.dataset.theme = t;
   applyPalette();
-  syncAppIcon();
-}
-/** App-Icon passend zu Hell/Dunkel: Apple übernimmt beim „Zum Home-Bildschirm“ das gerade angebotene Icon */
-function syncAppIcon() {
-  const dark = isDark();
-  const set = (sel, light, darkSrc) => { const l = document.querySelector(sel); if (l) l.href = dark ? darkSrc : light; };
-  set('link[rel="apple-touch-icon"]', 'icons/apple-touch-icon.png?v=3', 'icons/apple-touch-icon-dark.png?v=1');
-  set('link[rel="icon"]', 'icons/icon.svg?v=3', 'icons/icon-dark.svg?v=1');
 }
 function paletteHtml() {
   const cur = LS.get('palette', 'indigo');
