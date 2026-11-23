@@ -558,31 +558,57 @@ window.visualViewport?.addEventListener('resize', () => { if (!typing()) settleV
 /* Handy: Tippt man in einem Fenster (z. B. Kommentare), schiebt das iPhone sonst die ganze Ansicht
    nach oben und das Fenster landet ganz oben. Stattdessen: Fenster genau über der Tastatur halten –
    es rückt nur so weit hoch wie nötig. (Privatchat füllt ohnehin die ganze Höhe und bleibt, wie er ist.) */
+/** Fenster weich an die neue Stelle gleiten lassen statt springen (FLIP: alte Lage merken, umstellen, hingleiten) */
+function glideSheet(wrap, change) {
+  const sh = wrap?.querySelector('.sheet');
+  if (!sh) { change(); return; }
+  const before = sh.getBoundingClientRect().top;
+  change();
+  const dy = before - sh.getBoundingClientRect().top;
+  if (Math.abs(dy) < 2 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  sh.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.2, .9, .3, 1)' });
+}
 function anchorSheetToKeyboard() {
   const vv = window.visualViewport;
   const wrap = document.activeElement?.closest?.('.sheet-wrap:not(.dm-sheet)');
   document.querySelectorAll('.sheet-wrap.kb-anchored').forEach((w) => {
-    if (w !== wrap) { w.classList.remove('kb-anchored'); w.style.removeProperty('--kb-top'); w.style.removeProperty('--kb-h'); }
+    if (w !== wrap) glideSheet(w, () => { w.classList.remove('kb-anchored'); w.style.removeProperty('--kb-top'); w.style.removeProperty('--kb-h'); });
   });
   if (!vv || !wrap || !typing() || !matchMedia('(max-width: 699px) and (hover: none)').matches) return;
   const open = window.innerHeight - vv.height > 120; // Tastatur sichtbar
-  if (!open) { wrap.classList.remove('kb-anchored'); return; }
-  wrap.style.setProperty('--kb-top', `${Math.round(vv.offsetTop)}px`);
-  wrap.style.setProperty('--kb-h', `${Math.round(vv.height)}px`);
-  wrap.classList.add('kb-anchored');
+  if (!open) { if (wrap.classList.contains('kb-anchored')) glideSheet(wrap, () => wrap.classList.remove('kb-anchored')); return; }
+  const top = `${Math.round(vv.offsetTop)}px`, h = `${Math.round(vv.height)}px`;
+  // Nur umstellen, wenn sich wirklich etwas geändert hat (sonst unnötiges Neuzeichnen = Ruckeln)
+  if (wrap.classList.contains('kb-anchored') && wrap.style.getPropertyValue('--kb-top') === top && wrap.style.getPropertyValue('--kb-h') === h) return;
+  glideSheet(wrap, () => {
+    wrap.style.setProperty('--kb-top', top);
+    wrap.style.setProperty('--kb-h', h);
+    wrap.classList.add('kb-anchored');
+  });
 }
-const anchorSoon = () => { anchorSheetToKeyboard(); setTimeout(anchorSheetToKeyboard, 120); setTimeout(anchorSheetToKeyboard, 400); };
+let anchorRaf = 0;
+const anchorFrame = () => { cancelAnimationFrame(anchorRaf); anchorRaf = requestAnimationFrame(anchorSheetToKeyboard); };
+const anchorSoon = () => { anchorFrame(); setTimeout(anchorFrame, 120); setTimeout(anchorFrame, 400); };
 window.visualViewport?.addEventListener('resize', anchorSoon);
-window.visualViewport?.addEventListener('scroll', anchorSheetToKeyboard);
-document.addEventListener('focusin', anchorSoon);
-document.addEventListener('focusout', () => setTimeout(anchorSheetToKeyboard, 60));
+window.visualViewport?.addEventListener('scroll', anchorFrame);
+// Beim Tippen in einem Fenster: Milchglas sofort abschalten – das iPhone muss es sonst während
+// der Tastatur-Animation ständig neu berechnen (Ruckeln). Sieht fast gleich aus.
+document.addEventListener('focusin', (e) => {
+  if (isTextField(e.target) && e.target.closest?.('.sheet-wrap')) document.documentElement.classList.add('typing-sheet');
+  anchorSoon();
+});
+document.addEventListener('focusout', () => setTimeout(() => {
+  if (!typing()) document.documentElement.classList.remove('typing-sheet');
+  anchorFrame();
+}, 60));
 // Während ein Fenster offen ist, darf die Seite dahinter nicht wegrutschen (iOS verschiebt sie beim Tippen)
+let holdRaf = 0;
 window.addEventListener('scroll', () => {
   if (!scrollLocked || Math.abs(window.scrollY - lockY) <= 1) return;
   // Tippen in einem Fenster: iPhone schiebt sonst die Seite dahinter weg – und beim Schließen der
   // Tastatur springt sie sichtbar zurück (Ruckeln). Seite sofort festhalten; das Fenster selbst
   // sitzt dank anchorSheetToKeyboard ohnehin über der Tastatur.
-  if (typing() && document.activeElement?.closest?.('.sheet-wrap')) { window.scrollTo(0, lockY); return; }
+  if (typing() && document.activeElement?.closest?.('.sheet-wrap')) { cancelAnimationFrame(holdRaf); holdRaf = requestAnimationFrame(() => window.scrollTo(0, lockY)); return; }
   if (!typing()) settleViewport();
 }, { passive: true });
 // Tastatur geht zu → Seite dahinter ohne Verzögerung an ihren Platz (kein Nachruckeln)
