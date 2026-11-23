@@ -1660,6 +1660,14 @@ function eventBody(p) {
    Neuen Eintrag oben einfügen → die Kachel zeigt immer den neuesten. */
 const NEWS = [
   {
+    id: '2026-11-23-gta6',
+    date: '2026-11-23',
+    label: '✨ Neue Funktionen',
+    items: [
+      { icon: '🌴', title: 'Farbschema „GTA VI“', text: 'Zum Erscheinen von GTA VI gibt es exklusiv ein Sonnenuntergangs-Farbschema in Pink, Orange, Lila und Türkis – nur bis zum 12. Dezember, danach verschwindet es wieder.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
+    ],
+  },
+  {
     id: '2026-11-23-fixes-6',
     date: '2026-11-23',
     label: '🛠️ Bug-Fixes',
