@@ -3982,7 +3982,7 @@ const PALETTES = {
   // Sonder-Farbschema zum Erscheinen von GTA VI (19.11.2026) – nur bis einschließlich 12.12.2026,
   // ab dem 13.12.2026 verschwindet es automatisch (wer es nutzt, bekommt wieder Indigo).
   gta6: { name: 'GTA VI', until: '2026-12-13', badge: 'bis 12.12.', accent: ['#e0336f', '#ff5fa2'], accent2: ['#7c3aed', '#a78bfa'],
-    light: ['#ff9ec7', '#c9a8ff', '#f5a3e6', '#ffd6bd'], dark: ['#b8336a', '#6a2fc2', '#9c2a8e', '#7a4234'] },
+    light: ['#ff9ec7', '#c9a8ff', '#f5a3e6', '#ffc89a'], dark: ['#b8336a', '#6a2fc2', '#9c2a8e', '#b0603a'] },
 };
 /** Ist ein Farbschema heute verfügbar? (zeitlich begrenzte verschwinden ab ihrem Enddatum) */
 const paletteAvailable = (p) => !!p && (!p.until || today() < p.until);
