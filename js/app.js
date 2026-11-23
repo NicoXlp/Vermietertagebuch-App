@@ -988,6 +988,7 @@ function renderNow(animate) {
   const ns = $('.news-scroll', v);
   if (ns && newsScrollTop) { ns.scrollTop = newsScrollTop; ns.classList.toggle('more', ns.scrollTop + ns.clientHeight < ns.scrollHeight - 4); }
   syncTabbar();
+  syncSnow();
   updateVoiceUI();
   hydrateMedia();
   settleSegs(v);
@@ -1659,6 +1660,14 @@ function eventBody(p) {
 /* ─── „Neues“: Ankündigungen auf der Startseite ──────────────────────────────
    Neuen Eintrag oben einfügen → die Kachel zeigt immer den neuesten. */
 const NEWS = [
+  {
+    id: '2026-11-23-snow',
+    date: '2026-11-23',
+    label: '✨ Neue Funktionen',
+    items: [
+      { icon: '❄️', title: 'Es schneit', text: 'Auf der Startseite rieselt jetzt leise und ganz dezent Schnee – bis zum 26. Dezember.' },
+    ],
+  },
   {
     id: '2026-11-23-xmas',
     date: '2026-11-23',
@@ -4041,6 +4050,66 @@ function applyPalette() {
 /** Winterzeit: Weihnachtsmützen auf den Profilbildern – ab dem 27.12.2026 automatisch wieder weg */
 const XMAS_UNTIL = '2026-12-27';
 const syncSeason = () => document.documentElement.classList.toggle('xmas', today() < XMAS_UNTIL);
+/* ─── Leiser Schneefall auf der Startseite (Winterzeit, bis einschließlich 26.12.2026) ───
+   Bewusst unaufdringlich: wenige kleine, sehr durchsichtige Flocken, die langsam vor den Kacheln
+   rieseln (nicht anklickbar). Davor statt dahinter, weil das Milchglas der Kacheln sonst bei jedem Bild
+   neu berechnet werden müsste. Läuft nur auf der Startseite und nur, solange die App sichtbar ist. */
+const snow = { cv: null, ctx: null, flakes: [], raf: 0, last: 0, w: 0, h: 0, dpr: 1 };
+function snowWanted() {
+  return state.ready && state.tab === 'home' && today() < XMAS_UNTIL && !document.hidden
+    && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+function snowResize() {
+  if (!snow.cv) return;
+  snow.dpr = Math.min(2, window.devicePixelRatio || 1);
+  snow.w = window.innerWidth; snow.h = window.innerHeight;
+  snow.cv.width = Math.round(snow.w * snow.dpr); snow.cv.height = Math.round(snow.h * snow.dpr);
+  snow.ctx.setTransform(snow.dpr, 0, 0, snow.dpr, 0, 0);
+  // Dichte an die Fläche anpassen: Handy ≈ 35, großer Bildschirm höchstens 70 Flocken
+  const n = Math.max(24, Math.min(70, Math.round(snow.w * snow.h / 11000)));
+  while (snow.flakes.length < n) snow.flakes.push(newFlake(true));
+  snow.flakes.length = n;
+}
+function newFlake(anywhere) {
+  const r = .9 + Math.random() * 1.8; // 0,9–2,7 px: klein und zart
+  return { x: Math.random() * (snow.w || 400), y: anywhere ? Math.random() * (snow.h || 800) : -6,
+    r, vy: 14 + r * 9 + Math.random() * 8, // langsam: 20–50 px pro Sekunde
+    sway: 8 + Math.random() * 16, phase: Math.random() * 6.28, a: .22 + Math.random() * .3 }; // sehr durchsichtig
+}
+function snowFrame(t) {
+  snow.raf = requestAnimationFrame(snowFrame);
+  // ~24 Bilder pro Sekunde reichen für langsam rieselnden Schnee – spart Akku und Rechenleistung
+  if (snow.last && t - snow.last < 40) return;
+  const dt = Math.min(.08, (t - (snow.last || t)) / 1000); snow.last = t;
+  const { ctx, w, h } = snow;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = isDark() ? '#ffffff' : '#9fb3d6'; // im Hellen leicht bläulich, sonst unsichtbar
+  for (const f of snow.flakes) {
+    f.y += f.vy * dt; f.phase += dt * .8;
+    const x = f.x + Math.sin(f.phase) * f.sway;
+    if (f.y > h + 6) Object.assign(f, newFlake(false));
+    ctx.globalAlpha = f.a;
+    ctx.beginPath(); ctx.arc(x, f.y, f.r, 0, 6.2832); ctx.fill();
+  }
+}
+function syncSnow() {
+  const want = snowWanted();
+  if (!want) {
+    if (snow.raf) { cancelAnimationFrame(snow.raf); snow.raf = 0; }
+    if (snow.cv) snow.cv.hidden = true;
+    return;
+  }
+  if (!snow.cv) {
+    snow.cv = document.createElement('canvas');
+    snow.cv.id = 'snow'; snow.cv.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(snow.cv);
+    snow.ctx = snow.cv.getContext('2d');
+    addEventListener('resize', snowResize);
+    document.addEventListener('visibilitychange', syncSnow);
+  }
+  snow.cv.hidden = false;
+  if (!snow.raf) { snowResize(); snow.last = 0; snow.raf = requestAnimationFrame(snowFrame); }
+}
 function applyTheme() {
   syncSeason();
   const t = LS.get('theme', 'auto');
@@ -4337,7 +4406,7 @@ let lastDay = today();
 let lastGreeting = greeting();
 setInterval(() => {
   // Tageswechsel oder neue Tageszeit (Guten Morgen / Tag / Abend) → neu zeichnen
-  if (today() !== lastDay || greeting() !== lastGreeting) { lastDay = today(); lastGreeting = greeting(); syncSeason(); applyPalette(); render(); }
+  if (today() !== lastDay || greeting() !== lastGreeting) { lastDay = today(); lastGreeting = greeting(); syncSeason(); syncSnow(); applyPalette(); render(); }
 }, 60000);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) { beat(true); render(); checkLocalReminders(); } else beat(false);
