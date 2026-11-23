@@ -1664,7 +1664,7 @@ const NEWS = [
     date: '2026-11-23',
     label: '✨ Neue Funktionen',
     items: [
-      { icon: '🌴', title: 'Farbschema „GTA VI“', text: 'Zum Erscheinen von GTA VI gibt es exklusiv ein Sonnenuntergangs-Farbschema in Pink und Lila mit einem Hauch Orange – nur bis zum 12. Dezember, danach verschwindet es wieder.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
+      { icon: '🌴', title: 'Farbschema „GTA VI“', text: 'Zum Erscheinen von GTA VI gibt es exklusiv ein GTA-VI-Farbschema in Pink und Lila mit einem Hauch Orange – nur bis zum 12. Dezember, danach verschwindet es wieder.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
     ],
   },
   {
