@@ -1706,3 +1706,9 @@ html.typing-sheet .sheet-wrap .sheet {
   .b3 { background: radial-gradient(closest-side, var(--blob-3) 30%, transparent); }
   .b4 { background: radial-gradient(closest-side, var(--blob-4) 30%, transparent); }
 }
+
+/* Zeitlich begrenztes Farbschema: kleines Etikett „bis …“ */
+.palette.limited { position: relative; }
+.pal-badge { position: absolute; top: -7px; left: 50%; transform: translateX(-50%); z-index: 1; white-space: nowrap;
+  font-size: 10px; font-weight: 700; line-height: 1; padding: 3px 7px; border-radius: 999px;
+  background: linear-gradient(90deg, #ff5fa2, #ff9a3c); color: #1a0b14; box-shadow: 0 2px 6px rgba(0,0,0,.18); }
