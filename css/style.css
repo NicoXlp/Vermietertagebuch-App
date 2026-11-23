@@ -1737,3 +1737,10 @@ html.splashing #snow { visibility: hidden; }
 
 /* Profil bearbeiten: großes Vorschaubild ohne Mütze (überall sonst bleibt sie) */
 html.xmas .profile-photo .av::before { display: none; }
+
+/* Handy: Fenster nie über der Navigationsleiste – unten bleibt immer Platz für die Leiste
+   (Leiste 58 px + ihr Abstand zum Rand + 10 px Luft). Fenster werden in der Fläche darüber mittig gezeigt. */
+@media (max-width: 699px) {
+  .sheet-wrap:not(.dm-sheet):not(.kb-anchored) { padding-bottom: calc(max(14px, var(--safe-b) + 4px) + 68px); }
+  .sheet-wrap:not(.dm-sheet):not(.kb-anchored) .sheet { max-height: min(calc(100% - 8px), 78dvh); }
+}
