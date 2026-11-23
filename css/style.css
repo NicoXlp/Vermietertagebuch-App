@@ -1666,3 +1666,20 @@ html, body { overscroll-behavior-y: none; }
 .c-divider { display: flex; align-items: center; gap: 10px; margin: 14px 2px 12px; font-size: 12.5px; font-weight: 650; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
 .c-divider::after { content: ''; flex: 1; height: 1px; background: var(--border, color-mix(in srgb, var(--text) 12%, transparent)); }
 .c-empty { padding: 10px 0 18px; font-size: 14px; }
+
+/* Handy: Fenster etwas kleiner, damit sie beim Öffnen nicht bis an den oberen Bildschirmrand reichen */
+@media (max-width: 699px) {
+  .sheet-wrap:not(.dm-sheet):not(.kb-anchored) .sheet { max-height: min(calc(100% - 56px), 78dvh); }
+}
+
+/* Schließen flüssig: während des Ausblendens kein Milchglas neu berechnen (teuer auf iPhones) */
+.sheet-wrap.closing .sheet {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: color-mix(in srgb, var(--glass-bg-strong) 88%, var(--bg));
+}
+.sheet-wrap.closing { pointer-events: none; }
+
+/* Kommentarfenster: nur die Liste scrollt, das Eingabefeld sitzt fest darunter (auch bei vielen Kommentaren) */
+.sheet-body.c-body { display: flex; flex-direction: column; overflow: hidden; min-height: 0; flex: 1 1 auto; }
+.c-body #clist { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; margin: 0 -18px; padding: 0 18px 4px; }
+.c-body #cf { position: static; flex: none; }
