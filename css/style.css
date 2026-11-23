@@ -1756,7 +1756,7 @@ html[data-theme=light] #snow .sn { background-image: var(--l); }
 @keyframes snSway { from { transform: translate3d(calc(-1 * var(--sw)), 0, 0); } to { transform: translate3d(var(--sw), 0, 0); } }
 
 /* Profil bearbeiten: großes Vorschaubild ohne Mütze (überall sonst bleibt sie) */
-html.xmas .profile-photo .av::before { display: none; }
+html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { display: none; } /* große Profilbilder (eigenes und fremde Profile): ohne Mütze */
 
 /* Handy: Fenster nie über der Navigationsleiste – unten bleibt immer Platz für die Leiste
    (Leiste 58 px + ihr Abstand zum Rand + 10 px Luft). Fenster werden in der Fläche darüber mittig gezeigt. */
