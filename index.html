@@ -14,19 +14,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg?v=3" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=3">
-  <script>
-    // Dunkles App-Icon, wenn Gerät oder App im Dunkelmodus sind (sofort, noch vor dem Laden der App)
-    (function () {
-      try {
-        var t = JSON.parse(localStorage.getItem('vt.theme') || '"auto"');
-        var dark = t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
-        if (!dark) return;
-        document.querySelector('link[rel="apple-touch-icon"]').href = 'icons/apple-touch-icon-dark.png?v=1';
-        document.querySelector('link[rel="icon"]').href = 'icons/icon-dark.svg?v=1';
-      } catch (e) { /* egal */ }
-    })();
-  </script>
-  <link rel="stylesheet" href="css/style.css?v=89">
+  <link rel="stylesheet" href="css/style.css?v=90">
 </head>
 <body>
   <!-- Startanimation: Kalender-Tagebuch (steht direkt im HTML, damit sie sofort erscheint) -->
@@ -90,6 +78,6 @@
 
   <div id="toasts" aria-live="polite"></div>
 
-  <script type="module" src="js/app.js?v=89"></script>
+  <script type="module" src="js/app.js?v=90"></script>
 </body>
 </html>
