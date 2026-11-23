@@ -123,6 +123,7 @@ const I = {
   play: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.9l10.2-6.5a1 1 0 0 0 0-1.8L9.5 4.6A1 1 0 0 0 8 5.5Z"/></svg>',
   pause: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>',
   photo: svg('<rect x="3" y="5" width="18" height="15" rx="3.5"/><circle cx="12" cy="12.5" r="3.6"/><path d="M8.5 5 10 3h4l1.5 2"/>'),
+  sticker: svg('<path d="M20.5 13.5V7A3.5 3.5 0 0 0 17 3.5H7A3.5 3.5 0 0 0 3.5 7v10A3.5 3.5 0 0 0 7 20.5h6.5z"/><path d="M13.5 20.5v-3.5a3.5 3.5 0 0 1 3.5-3.5h3.5"/><path d="M8.5 10h.01M14.5 10h.01M9 14c1.6 1.2 3.4 1.2 5 0"/>'),
   mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>'),
   house: svg('<path d="M3 11 12 4l9 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/>'),
 };
@@ -2034,6 +2035,7 @@ function shortTime(ts) {
 }
 function dmPreview(m) {
   const who = m.author === state.me ? 'Du: ' : '';
+  if (m.sticker) return `${who}🌟 Sticker`;
   if (m.voice) return `${who}🎤 Sprachnachricht (${fmtDur(m.voice.duration)})`;
   if (m.media?.length) return `${who}${m.media.every((x) => x.kind === 'video') ? '🎬 Video' : '📷 Foto'}${m.media.length > 1 ? ` (${m.media.length})` : ''}${m.text ? ` · ${snippet(m.text, 40)}` : ''}`;
   if (m.taskId) return `${who}📋 ${state.tasks.find((t) => t.id === m.taskId)?.title || 'Aufgabe'}`;
@@ -2084,9 +2086,10 @@ function dmMessagesHtml(id, ui = {}) {
     const d = iso(new Date(m.createdAt));
     const sep = d !== day ? `<div class="dm-day">${esc(fmtDay(d))}</div>` : '';
     day = d;
-    const kind = m.voice ? 'bare' : m.taskId || m.feedbackId ? 'rich' : m.media?.length ? 'media' : '';
+    const kind = m.sticker ? 'bare sticker' : m.voice ? 'bare' : m.taskId || m.feedbackId ? 'rich' : m.media?.length ? 'media' : '';
     const cap = m.text ? `<div class="txt">${richText(m.text)}</div>` : '';
-    const body = m.voice ? voiceBody(m)
+    const body = m.sticker ? `<img class="dm-sticker" alt="Sticker" src="${esc(m.sticker.data)}" style="aspect-ratio:${+m.sticker.w || 1}/${+m.sticker.h || 1}">`
+      : m.voice ? voiceBody(m)
       : m.feedbackId ? dmFeedbackCard(m)
       : m.taskId ? dmTaskCard(m) + cap
         : m.media?.length ? mediaGrid({ ...m, text: '' }) + cap
@@ -2105,6 +2108,7 @@ function dmMessagesHtml(id, ui = {}) {
         <div class="dm-ops">
           <button data-reply="${m.id}">${I.reply}Antworten</button>
           ${m.text ? `<button data-copy="${m.id}">${I.copy}Kopieren</button>` : ''}
+          ${m.sticker && !mine ? `<button data-stksave="${m.id}">${I.sticker}Sticker speichern</button>` : ''}
           ${mine ? `<button class="danger" data-dmdel="${m.id}">${I.trash}Löschen</button>` : ''}
         </div>
       </div>` : ''}
@@ -2162,6 +2166,7 @@ function chatSheet(id) {
       <form class="composer dm-bar" id="dmf">
         <button type="button" class="icon-btn dm-tool" id="dm-task" aria-label="Aufgabe zuteilen" title="Aufgabe zuteilen">${I.tasks}</button>
         <label class="icon-btn dm-tool" aria-label="Foto oder Video senden" title="Foto oder Video senden">${I.photo}<input type="file" id="dm-file" accept="image/*,video/*" multiple hidden></label>
+        <button type="button" class="icon-btn dm-tool" id="dm-stk" aria-label="Sticker senden" title="Sticker">${I.sticker}</button>
         <textarea id="dmt" rows="1" maxlength="2000" placeholder="Nachricht …" aria-label="Nachricht an ${esc(dn(id))}"></textarea>
         <button type="button" class="send" id="dm-mic" aria-label="Sprachnachricht aufnehmen">${I.mic}</button>
         <button type="submit" class="send" id="dm-send" aria-label="Senden" hidden>${I.send}</button>
@@ -2191,6 +2196,7 @@ function chatSheet(id) {
         ta.focus();
       };
       $('#dm-mic', f).onclick = () => dmVoiceSheet(id, replyData(), () => setReply(null));
+      $('#dm-stk', f).onclick = () => stickerPanel(id, replyData(), () => { setReply(null); setTimeout(() => { list.scrollTop = list.scrollHeight; }, 80); });
       $('#dm-file', f).onchange = (e) => {
         const files = [...e.target.files];
         e.target.value = '';
@@ -2229,6 +2235,13 @@ function chatSheet(id) {
           const m = state.messages.find((x) => x.id === cp.dataset.copy);
           ui.sel = null; paint();
           try { await navigator.clipboard.writeText(m?.text || ''); toast('📋 Kopiert'); } catch { toast('Kopieren hat nicht geklappt'); }
+          return;
+        }
+        const sv = e.target.closest('[data-stksave]');
+        if (sv) {
+          const m = state.messages.find((x) => x.id === sv.dataset.stksave);
+          ui.sel = null; paint();
+          if (m?.sticker) saveSticker(m.sticker.data, m.sticker.w, m.sticker.h);
           return;
         }
         const r = e.target.closest('[data-react]');
@@ -2331,6 +2344,212 @@ function chatSheet(id) {
     hydrateMedia();
     if (atBottom && !ui.sel) l.scrollTop = l.scrollHeight;
   }
+}
+
+/* ─── Sticker: eigene Sticker aus Fotos zuschneiden und im Privatchat senden ──────────────────
+   Gespeichert in „stickers“ (je Person, owners: [id]). Eine Nachricht trägt das Bild selbst mit,
+   damit gesendete Sticker auch dann sichtbar bleiben, wenn sie aus der Sammlung gelöscht werden. */
+let stickerUnsub = null, stickerFor = null;
+const stickerLibOf = () => [...(state.stickers || [])].filter((x) => x.owners?.includes(state.me)).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+const stickerListeners = new Set();
+function ensureStickerSub() {
+  if (!store || !state.me || stickerFor === state.me) return;
+  stickerUnsub?.();
+  stickerFor = state.me; state.stickers = [];
+  stickerUnsub = store.subscribe('stickers', (list) => {
+    state.stickers = list;
+    stickerListeners.forEach((f) => f());
+  }, { field: 'owners', contains: state.me });
+}
+function saveSticker(data, w, h) {
+  ensureStickerSub();
+  state.stickers ||= [];
+  if (stickerLibOf().some((s) => s.data === data)) return toast('Den Sticker hast du schon 😊');
+  addDoc('stickers', { owners: [state.me], data, w, h, createdAt: Date.now() });
+  stickerListeners.forEach((f) => f());
+  toast('🌟 Sticker gespeichert');
+}
+
+function stickerPanel(to, extra = {}, onSent) {
+  ensureStickerSub();
+  let editing = false, draw = null;
+  openSheet({
+    title: '🌟 Sticker',
+    html: `<div class="stk-top"><span class="small muted">Antippen zum Senden an ${esc(dn(to))}</span><button type="button" class="link-btn" id="stk-edit" hidden>Bearbeiten</button></div>
+      <div class="stk-grid" id="stk-grid"></div>`,
+    onClose: () => stickerListeners.delete(draw),
+    onMount: (api) => {
+      const grid = $('#stk-grid', api.el), editBtn = $('#stk-edit', api.el);
+      draw = () => {
+        editBtn.hidden = !stickerLibOf().length;
+        editBtn.textContent = editing ? 'Fertig' : 'Bearbeiten';
+        grid.classList.toggle('editing', editing);
+        grid.innerHTML = `<label class="stk-tile stk-new" aria-label="Neuen Sticker erstellen"><span>${I.plus}</span><small>Neuer Sticker</small><input type="file" accept="image/*" hidden id="stk-file"></label>`
+          + stickerLibOf().map((s) => `<button type="button" class="stk-tile" data-stk="${s.id}" aria-label="Sticker senden"><img alt="" src="${esc(s.data)}">${editing ? `<span class="stk-x" aria-label="Löschen">${I.close}</span>` : ''}</button>`).join('')
+          + (stickerLibOf().length ? '' : '<p class="small muted stk-hint">Erstelle deinen ersten Sticker aus einem Foto: Form wählen oder frei mit dem Finger ausschneiden ✂️</p>');
+        $('#stk-file', grid).onchange = (e) => { const file = e.target.files[0]; e.target.value = ''; if (file) stickerEditor(file); };
+      };
+      stickerListeners.add(draw);
+      draw();
+      editBtn.onclick = () => { editing = !editing; draw(); };
+      grid.addEventListener('click', async (e) => {
+        const b = e.target.closest('[data-stk]');
+        if (!b) return;
+        const s = stickerLibOf().find((x) => x.id === b.dataset.stk);
+        if (!s) return;
+        if (editing) {
+          if (await confirmSheet('Diesen Sticker aus deiner Sammlung löschen?')) { removeDoc('stickers', s.id); draw(); }
+          return;
+        }
+        sendDm(to, { sticker: { data: s.data, w: s.w || 1, h: s.h || 1 }, ...extra }, { pushBody: '🌟 Sticker' });
+        onSent?.();
+        api.close();
+      });
+    },
+  });
+}
+
+/** Zuschneiden: Form wählen (Kreis, Quadrat, Herz) oder frei mit dem Finger ausschneiden */
+async function stickerEditor(file) {
+  let img;
+  try {
+    const url = URL.createObjectURL(file);
+    img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Das Bild konnte nicht geöffnet werden')); i.src = url; });
+    // große Fotos verkleinern – flüssigeres Verschieben
+    const max = 1600, f = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas'); c.width = Math.round(img.naturalWidth * f); c.height = Math.round(img.naturalHeight * f);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    img = c;
+  } catch (e) { return toast(`⚠️ ${e.message}`, 4000); }
+  const SHAPES = [['circle', '⭕', 'Kreis'], ['square', '⬜', 'Quadrat'], ['heart', '❤️', 'Herz'], ['free', '✂️', 'Frei']];
+  const st = { shape: 'circle', z: 1, ox: 0, oy: 0, border: true, lasso: [], drawing: false };
+  openSheet({
+    title: '✂️ Zuschneiden',
+    html: `<div class="stk-stage" id="stk-stage"><canvas id="stk-cv"></canvas></div>
+      <div class="stk-shapes" role="radiogroup" aria-label="Form">${SHAPES.map(([k, e, n]) => `<button type="button" class="chip" data-shape="${k}" role="radio">${e} ${n}</button>`).join('')}</div>
+      <p class="small muted center stk-tip" id="stk-tip"></p>
+      <div class="stk-row"><span class="small muted">Zoom</span><input type="range" id="stk-zoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><label class="stk-border"><input type="checkbox" id="stk-border" checked><span>Rand</span></label></div>
+      <div class="sheet-actions"><button class="btn" type="button" data-close>Abbrechen</button><button class="btn primary" type="button" id="stk-save">Speichern</button></div>`,
+    onMount: (api) => {
+      const stage = $('#stk-stage', api.el), cv = $('#stk-cv', api.el), ctx = cv.getContext('2d');
+      const zoom = $('#stk-zoom', api.el), tip = $('#stk-tip', api.el);
+      let S = 300, dpr = 1;
+      const size = () => { S = stage.clientWidth || 300; dpr = Math.min(3, devicePixelRatio || 1); cv.width = S * dpr; cv.height = S * dpr; paint(); };
+      // Bildlage: „cover“ in der Fläche, dann Zoom und Verschiebung
+      const geo = () => { const base = Math.max(S / img.width, S / img.height), sc = base * st.z, dw = img.width * sc, dh = img.height * sc;
+        return { sc, x: S / 2 - dw / 2 + st.ox, y: S / 2 - dh / 2 + st.oy, dw, dh }; };
+      const clampPan = () => { const g = geo(); const mx = Math.max(0, (g.dw - S) / 2), my = Math.max(0, (g.dh - S) / 2); st.ox = Math.max(-mx, Math.min(mx, st.ox)); st.oy = Math.max(-my, Math.min(my, st.oy)); };
+      const shapePath = (shape = st.shape) => {
+        const p = new Path2D(), m = S * 0.07, w = S - 2 * m;
+        if (shape === 'circle') p.arc(S / 2, S / 2, w / 2, 0, Math.PI * 2);
+        else if (shape === 'square') { const r = w * 0.2; p.moveTo(m + r, m); p.arcTo(m + w, m, m + w, m + w, r); p.arcTo(m + w, m + w, m, m + w, r); p.arcTo(m, m + w, m, m, r); p.arcTo(m, m, m + w, m, r); p.closePath(); }
+        else if (shape === 'heart') {
+          const X = (u) => m + u * w, Y = (v) => m + v * w;
+          p.moveTo(X(.5), Y(.97));
+          p.bezierCurveTo(X(.12), Y(.72), X(-.04), Y(.46), X(.05), Y(.26));
+          p.bezierCurveTo(X(.14), Y(.05), X(.42), Y(.02), X(.5), Y(.24));
+          p.bezierCurveTo(X(.58), Y(.02), X(.86), Y(.05), X(.95), Y(.26));
+          p.bezierCurveTo(X(1.04), Y(.46), X(.88), Y(.72), X(.5), Y(.97));
+          p.closePath();
+        } else {
+          // Freihand: Punkte liegen in Bildkoordinaten (bleiben beim Zoomen am Motiv)
+          const g = geo();
+          st.lasso.forEach(([ix, iy], i) => { const x = g.x + ix * g.sc, y = g.y + iy * g.sc; if (i) p.lineTo(x, y); else p.moveTo(x, y); });
+          if (!st.drawing) p.closePath();
+        }
+        return p;
+      };
+      const lassoOk = () => st.lasso.length > 8;
+      function paint() {
+        const g = geo();
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, S, S);
+        ctx.drawImage(img, g.x, g.y, g.dw, g.dh);
+        const has = st.shape !== 'free' || (lassoOk() && !st.drawing);
+        if (has) {
+          // außerhalb abdunkeln
+          const outside = new Path2D(); outside.rect(0, 0, S, S); outside.addPath(shapePath());
+          ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fill(outside, 'evenodd');
+        }
+        if (st.shape !== 'free' || st.lasso.length > 1) {
+          ctx.save(); ctx.lineWidth = 2.5; ctx.strokeStyle = '#fff'; ctx.setLineDash(st.drawing ? [] : [7, 6]); ctx.lineJoin = ctx.lineCap = 'round';
+          ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 3; ctx.stroke(shapePath()); ctx.restore();
+        }
+        tip.textContent = st.shape === 'free'
+          ? (lassoOk() && !st.drawing ? 'Fertig ausgeschnitten ✂️ Nochmal zeichnen, um neu anzufangen' : 'Fahre mit dem Finger einmal um das Motiv herum')
+          : 'Ziehen zum Verschieben · mit zwei Fingern oder dem Regler zoomen';
+        api.el.querySelectorAll('[data-shape]').forEach((b) => { const on = b.dataset.shape === st.shape; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+      }
+      $('.stk-shapes', api.el).addEventListener('click', (e) => { const b = e.target.closest('[data-shape]'); if (b) { st.shape = b.dataset.shape; haptic(8); paint(); } });
+      zoom.oninput = () => { st.z = +zoom.value; clampPan(); paint(); };
+      $('#stk-border', api.el).onchange = (e) => { st.border = e.target.checked; };
+
+      // Gesten: 1 Finger = verschieben (Form) bzw. ausschneiden (Frei), 2 Finger = zoomen und verschieben
+      const pts = new Map(); let last = null;
+      const local = (e) => { const r = stage.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+      const pinch = () => { const [a, b] = [...pts.values()]; return { d: Math.hypot(a[0] - b[0], a[1] - b[1]), cx: (a[0] + b[0]) / 2, cy: (a[1] + b[1]) / 2 }; };
+      stage.addEventListener('pointerdown', (e) => {
+        try { stage.setPointerCapture(e.pointerId); } catch { /* egal */ }
+        pts.set(e.pointerId, local(e));
+        if (pts.size === 2) { st.drawing = false; if (st.shape === 'free' && !lassoOk()) st.lasso = []; last = { ...pinch(), z: st.z }; paint(); return; }
+        last = null;
+        if (st.shape === 'free') { const g = geo(), [x, y] = local(e); st.lasso = [[(x - g.x) / g.sc, (y - g.y) / g.sc]]; st.drawing = true; paint(); }
+      });
+      stage.addEventListener('pointermove', (e) => {
+        if (!pts.has(e.pointerId)) return;
+        const prev = pts.get(e.pointerId), cur = local(e); pts.set(e.pointerId, cur);
+        if (pts.size === 2 && last) {
+          const p = pinch();
+          st.z = Math.max(1, Math.min(4, last.z * p.d / (last.d || 1))); zoom.value = st.z;
+          st.ox += p.cx - last.cx; st.oy += p.cy - last.cy; last = { ...p, z: last.z, d: last.d };
+          clampPan(); paint(); return;
+        }
+        if (pts.size !== 1) return;
+        if (st.shape === 'free') {
+          if (!st.drawing) return;
+          const g = geo(), q = [(cur[0] - g.x) / g.sc, (cur[1] - g.y) / g.sc], l = st.lasso[st.lasso.length - 1];
+          if (Math.hypot((q[0] - l[0]) * g.sc, (q[1] - l[1]) * g.sc) >= 3) { st.lasso.push(q); paint(); }
+        } else { st.ox += cur[0] - prev[0]; st.oy += cur[1] - prev[1]; clampPan(); paint(); }
+      });
+      const up = (e) => {
+        pts.delete(e.pointerId);
+        if (pts.size < 2) last = null;
+        if (st.drawing && !pts.size) { st.drawing = false; if (!lassoOk()) st.lasso = []; else haptic(12); paint(); }
+      };
+      stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+      stage.addEventListener('wheel', (e) => { e.preventDefault(); st.z = Math.max(1, Math.min(4, st.z * (e.deltaY < 0 ? 1.08 : 1 / 1.08))); zoom.value = st.z; clampPan(); paint(); }, { passive: false });
+
+      $('#stk-save', api.el).onclick = () => {
+        if (st.shape === 'free' && !lassoOk()) return toast('Schneide zuerst etwas aus ✂️');
+        const path = shapePath();
+        // Begrenzung der Form
+        let bx, by, bw, bh;
+        if (st.shape === 'free') {
+          const g = geo(), xs = st.lasso.map((p) => g.x + p[0] * g.sc), ys = st.lasso.map((p) => g.y + p[1] * g.sc);
+          bx = Math.min(...xs); by = Math.min(...ys); bw = Math.max(...xs) - bx; bh = Math.max(...ys) - by;
+          if (Math.min(bw, bh) < 24) return toast('Das Stück ist zu klein – zeichne etwas größer');
+        } else { const m = S * 0.07; bx = by = m; bw = bh = S - 2 * m; }
+        const encode = (O) => {
+          const b = st.border ? O * 0.035 : 0, pad = b + 2, k = (O - 2 * pad) / Math.max(bw, bh);
+          const c = document.createElement('canvas'); c.width = Math.round(bw * k + 2 * pad); c.height = Math.round(bh * k + 2 * pad);
+          const x = c.getContext('2d');
+          x.translate(pad - bx * k, pad - by * k); x.scale(k, k);
+          if (b) { x.save(); x.lineJoin = 'round'; x.lineWidth = (2 * b) / k; x.strokeStyle = x.fillStyle = '#fff'; x.stroke(path); x.fill(path); x.restore(); }
+          x.save(); x.clip(path); const g = geo(); x.drawImage(img, g.x, g.y, g.dw, g.dh); x.restore();
+          let d = c.toDataURL('image/webp', 0.86);
+          if (!d.startsWith('data:image/webp')) d = c.toDataURL('image/png');
+          return { d, w: c.width, h: c.height };
+        };
+        let out = encode(384);
+        if (out.d.length > 260_000) out = encode(288);
+        if (out.d.length > 260_000) out = encode(224);
+        saveSticker(out.d, out.w, out.h);
+        api.close();
+      };
+      requestAnimationFrame(size);
+    },
+  });
 }
 
 function dmMediaSheet(to, files, extra = {}, onSent) {
@@ -3805,7 +4024,7 @@ function cloudSheet() {
             // Lokale Daten in die Cloud übernehmen
             await cloud.setHouse(state.house || { name: 'Unser Haus', createdAt: Date.now() });
             const local = readLocal(state.hid);
-            for (const col of [...COLLECTIONS, 'audio', 'chunks']) for (const doc of Object.values(local[col] || {})) await cloud.set(col, doc.id, doc);
+            for (const col of [...COLLECTIONS, 'audio', 'chunks', 'stickers']) for (const doc of Object.values(local[col] || {})) await cloud.set(col, doc.id, doc);
           }
           LS.set('fbconfig', c);
           toast('✓ Verbunden!');
@@ -4206,7 +4425,7 @@ async function migrateLocalToCloud(hid) {
   const local = readLocal(hid);
   if (!local._house) return null;
   $('#view').innerHTML = `<div class="loader"><div class="center"><div class="spinner" style="margin:0 auto 14px"></div><p class="muted">Deine Daten werden in die Cloud übertragen …</p></div></div>`;
-  for (const col of [...COLLECTIONS, 'audio', 'chunks']) {
+  for (const col of [...COLLECTIONS, 'audio', 'chunks', 'stickers']) {
     for (const doc of Object.values(local[col] || {})) await store.set(col, doc.id, doc);
   }
   await store.setHouse(local._house);

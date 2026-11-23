@@ -1808,3 +1808,36 @@ html.xmas .profile-photo .av::before { display: none; }
 .comment.flash .bubble { animation: cFlash 1.2s ease; }
 @keyframes cFlash { 0%, 100% { box-shadow: none; } 20% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent); } }
 .c-body .c-replybar { flex: none; }
+
+/* ─── Sticker ─── */
+.dm-bubble.sticker, .dm-msg.me .dm-bubble.sticker { background: none; padding: 0; box-shadow: none; }
+.dm-bubble.sticker.has-quote { background: var(--fill); padding: 6px; border-radius: 22px; }
+.dm-sticker { display: block; width: auto; height: auto; max-width: 150px; max-height: 150px; filter: drop-shadow(0 2px 5px rgba(0,0,0,.28)); -webkit-user-drag: none; }
+.stk-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -2px 2px 12px; }
+.link-btn { background: none; border: 0; padding: 4px 2px; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; }
+.stk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
+.stk-tile { position: relative; aspect-ratio: 1; border-radius: 20px; border: 0; padding: 0; background: var(--fill); display: grid; place-items: center; cursor: pointer; color: var(--text); }
+.stk-tile:active { transform: scale(.95); }
+.stk-tile img { max-width: 84%; max-height: 84%; filter: drop-shadow(0 2px 4px rgba(0,0,0,.25)); pointer-events: none; }
+.stk-new { align-content: center; gap: 4px; border: 2px dashed color-mix(in srgb, var(--text) 25%, transparent); background: none; text-align: center; }
+.stk-new span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--accent-btn, var(--accent)); color: var(--on-accent, #fff); margin: 0 auto; }
+.stk-new span svg { width: 18px; height: 18px; }
+.stk-new small { font-size: 11px; font-weight: 700; line-height: 1.2; padding: 0 4px; }
+.stk-x { position: absolute; top: -5px; right: -5px; width: 24px; height: 24px; border-radius: 50%; background: #ff453a; color: #fff; display: grid; place-items: center; }
+.stk-x svg { width: 13px; height: 13px; }
+.stk-grid.editing .stk-tile[data-stk] { animation: stkWiggle .28s ease-in-out infinite alternate; }
+@keyframes stkWiggle { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
+.stk-hint { grid-column: 1 / -1; margin: 4px 2px 0; }
+.stk-stage { position: relative; width: min(100%, 340px, 36dvh); aspect-ratio: 1; margin: 0 auto; border-radius: 22px; overflow: hidden; touch-action: none; cursor: crosshair;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--text) 10%, transparent) 0 25%, transparent 0 50%) 0 0 / 20px 20px; }
+.stk-stage canvas { display: block; width: 100%; height: 100%; }
+.stk-shapes { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin: 12px 0 2px; }
+.stk-shapes { flex-wrap: nowrap; }
+.stk-shapes .chip { padding: 6px 10px; font-size: 14px; gap: 4px; }
+@media (max-width: 380px) { .stk-shapes { gap: 4px; } .stk-shapes .chip { padding: 6px 7px; font-size: 13px; gap: 2px; } }
+.stk-tip { min-height: 1.4em; margin: 4px 0 4px; font-size: 13px; }
+.stk-row { display: flex; align-items: center; gap: 12px; margin: 2px 4px; min-height: 36px; }
+.stk-row input[type=range] { flex: 1; min-width: 0; accent-color: var(--accent); }
+.stk-border { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
+.stk-border input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
+.stk-stage + .stk-shapes + .stk-tip + .stk-row + .sheet-actions { margin-top: 8px; }
