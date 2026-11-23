@@ -1744,3 +1744,22 @@ html.xmas .profile-photo .av::before { display: none; }
   .sheet-wrap:not(.dm-sheet):not(.kb-anchored) { padding-bottom: calc(max(14px, var(--safe-b) + 4px) + 68px); }
   .sheet-wrap:not(.dm-sheet):not(.kb-anchored) .sheet { max-height: min(calc(100% - 8px), 78dvh); }
 }
+
+/* ═══ iPad, Tablet & PC: Navigationsleiste senkrecht am rechten Rand, mittig in der Höhe ═══
+   (Handys – auch quer, auch aufgeklappte Falt-Handys auf Android – behalten die Leiste unten.) Der Inhalt bekommt rechts Platz,
+   damit die Leiste nie etwas verdeckt. */
+@media (min-width: 700px) and (min-height: 500px) {
+  html:not(.phone-ua) .dock {
+    left: auto; bottom: auto; top: 50%;
+    right: max(14px, calc(env(safe-area-inset-right, 0px) + 8px));
+    transform: translateY(-50%); width: 76px; transition: none;
+  }
+  html:not(.phone-ua) .tabbar { flex-direction: column; height: auto; width: 76px; border-radius: 38px; }
+  html:not(.phone-ua) .tab { flex: none; height: 62px; width: 100%; }
+  html:not(.phone-ua) .lens { top: 0; bottom: auto; left: 4px; right: 4px; width: auto; }
+  html:not(.phone-ua) .tab .badge { top: 6px; left: calc(50% + 6px); }
+  /* Platz für die Leiste rechts – Inhalt bleibt sonst mittig */
+  html:not(.phone-ua) #app { padding-right: calc(76px + max(14px, calc(env(safe-area-inset-right, 0px) + 8px)) + 12px); }
+  html:not(.phone-ua) .view { padding-bottom: calc(var(--safe-b) + 28px); }
+  html:not(.phone-ua) #snow { right: 0; }
+}

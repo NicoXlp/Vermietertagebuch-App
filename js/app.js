@@ -846,28 +846,35 @@ function buildTabbar() {
   const lens = $('#lens');
   const tabs = () => $$('.tab', bar);
   const activeIdx = () => Math.max(0, TABS.findIndex((t) => t.id === state.tab));
+  // Senkrecht (iPad/Tablet/PC: Leiste rechts) oder waagerecht (Handy: Leiste unten)
+  const VERT = matchMedia(DOCK_VERTICAL_MQ);
+  const vert = () => VERT.matches && !document.documentElement.classList.contains('phone-ua');
+  const along = (e) => (vert() ? e.clientY : e.clientX);
+  const start = (r) => (vert() ? r.top : r.left);
+  const len = () => (vert() ? bar.clientHeight : bar.clientWidth);
   let lensX = 0;
-  const setX = (x) => { lensX = x; lens.style.transform = `translate3d(${x}px,0,0)`; };
+  const setX = (x) => { lensX = x; lens.style.transform = vert() ? `translate3d(0,${x}px,0)` : `translate3d(${x}px,0,0)`; };
   const geom = () => {
     const n = tabs().length;
     const pad = 4;
-    return { pad, n, w: (bar.clientWidth - pad * 2) / n };
+    return { pad, n, w: (len() - pad * 2) / n };
   };
   const placeLens = (idx, animate = true) => {
     const { pad, w } = geom();
-    lens.style.width = `${w}px`;
+    if (vert()) { lens.style.height = `${w}px`; lens.style.width = ''; } else { lens.style.width = `${w}px`; lens.style.height = ''; }
     if (!animate) lens.classList.add('no-anim');
     setX(pad + idx * w);
     if (!animate) { void lens.offsetWidth; lens.classList.remove('no-anim'); }
   };
 
   let down = null, dragging = false, hoverIdx = -1, raf = 0, pendingX = null;
-  const idxAt = (clientX) => {
+  const idxAt = (pos) => {
     const r = bar.getBoundingClientRect();
     const { pad, w, n } = geom();
-    return Math.max(0, Math.min(n - 1, Math.floor((clientX - r.left - pad) / w)));
+    return Math.max(0, Math.min(n - 1, Math.floor((pos - start(r) - pad) / w)));
   };
   new ResizeObserver(() => { if (!dragging) placeLens(activeIdx(), false); }).observe(bar);
+  VERT.addEventListener?.('change', () => placeLens(activeIdx(), false));
 
   const setHover = (hi) => {
     if (hi === hoverIdx) return;
@@ -877,7 +884,7 @@ function buildTabbar() {
   };
   bar.addEventListener('pointerdown', (e) => {
     if (e.button > 0) return;
-    down = { x: e.clientX, idx: idxAt(e.clientX), id: e.pointerId, offset: 0 };
+    down = { x: along(e), idx: idxAt(along(e)), id: e.pointerId, offset: 0 };
     dragging = false;
     bar.classList.add('pressed');
     try { bar.setPointerCapture(e.pointerId); } catch { /* egal */ }
@@ -887,24 +894,24 @@ function buildTabbar() {
     const r = bar.getBoundingClientRect();
     const { pad, w } = geom();
     if (!dragging) {
-      if (Math.abs(e.clientX - down.x) < 8) return;
+      if (Math.abs(along(e) - down.x) < 8) return;
       dragging = true;
       // Linse dort „anfassen“, wo der Finger sie gerade hält – kein Springen
-      down.offset = (down.x - r.left) - lensX;
+      down.offset = (down.x - start(r)) - lensX;
       if (down.offset < 0 || down.offset > w) down.offset = w / 2;
       bar.classList.add('dragging');
       haptic(5);
     }
-    pendingX = Math.max(pad, Math.min(bar.clientWidth - pad - w, e.clientX - r.left - down.offset));
+    pendingX = Math.max(pad, Math.min(len() - pad - w, along(e) - start(r) - down.offset));
     if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (pendingX != null && dragging) setX(pendingX); });
-    setHover(idxAt(r.left + pendingX + w / 2));
+    setHover(idxAt(start(r) + pendingX + w / 2));
   });
   const finish = (e, cancel) => {
     if (!down || (e && e.pointerId !== down.id)) return;
     const { w } = geom();
     const r = bar.getBoundingClientRect();
     const x = pendingX != null ? pendingX : lensX;
-    const idx = cancel ? activeIdx() : dragging ? idxAt(r.left + x + w / 2) : down.idx;
+    const idx = cancel ? activeIdx() : dragging ? idxAt(start(r) + x + w / 2) : down.idx;
     cancelAnimationFrame(raf); raf = 0; pendingX = null;
     if (dragging) setX(x);
     down = null; dragging = false;
@@ -935,6 +942,8 @@ function buildTabbar() {
   };
 }
 let syncTabbar = () => {};
+/** Ab Tablet-Größe (breit UND hoch genug – also nicht Handy quer): Navigationsleiste senkrecht rechts */
+const DOCK_VERTICAL_MQ = '(min-width: 700px) and (min-height: 500px)';
 
 let tabRender = 0;
 function switchTab(id) {
