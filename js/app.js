@@ -592,8 +592,11 @@ function anchorSheetToKeyboard() {
 }
 /* Schon beim Antippen (bevor die Tastatur kommt) das Fenster dorthin setzen, wo es über der Tastatur
    sitzen wird. Dann muss das iPhone die Ansicht nicht hochschieben – kein Springen, kein Gegeneinander. */
+let lastTapEl = null, lastTapAt = 0;
+document.addEventListener('touchend', (e) => { lastTapEl = e.target; lastTapAt = Date.now(); }, { passive: true, capture: true });
 function preAnchorSheet(el) {
   if (!isTextField(el)) return;
+  if (lastTapEl !== el || Date.now() - lastTapAt > 1000) return; // nur nach echtem Antippen
   const wrap = el.closest?.('.sheet-wrap:not(.dm-sheet)');
   if (!wrap || wrap.classList.contains('kb-anchored') || !matchMedia(TOUCH_MQ).matches) return;
   const kbH = LS.get('kbH', 0) > 120 ? LS.get('kbH') : Math.round(window.innerHeight * 0.46);
@@ -641,8 +644,16 @@ document.addEventListener('focusout', (e) => {
 });
 document.addEventListener('touchmove', (e) => {
   if (!scrollLocked) return;
-  const sc = e.target.closest?.('#clist, .sheet-body, .dm-list, textarea, .attach, .emoji-pick, .chips, .viewer');
-  if (!sc || sc.scrollHeight <= sc.clientHeight && sc.scrollWidth <= sc.clientWidth) e.preventDefault();
+  // Nächsten Bereich suchen, der wirklich scrollen kann – egal wo der Finger aufsetzt
+  // (z. B. auf der Emoji-Auswahl oder den Farbpunkten im Profil). Nur wenn es keinen gibt: blockieren.
+  for (let el = e.target; el && el !== document.body; el = el.parentElement) {
+    if (el.classList?.contains('sheet-wrap')) break;
+    const cs = getComputedStyle(el);
+    const canY = /(auto|scroll)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 1;
+    const canX = /(auto|scroll)/.test(cs.overflowX) && el.scrollWidth > el.clientWidth + 1;
+    if (canY || canX || (el.tagName === 'TEXTAREA' && el.scrollHeight > el.clientHeight)) return;
+  }
+  e.preventDefault();
 }, { passive: false });
 
 function openSheet({ title, html, onMount, refresh, onClose }) {
@@ -656,6 +667,8 @@ function openSheet({ title, html, onMount, refresh, onClose }) {
         <button class="icon-btn" data-close aria-label="Schließen">${I.close}</button></header>
       <div class="sheet-body">${html}</div>
     </section>`;
+  // Touch-Geräte: kein automatisches Aktivieren von Eingabefeldern (iPhone schiebt sonst das Fenster)
+  if (!matchMedia('(hover: hover)').matches) wrap.querySelectorAll('[autofocus]').forEach((x) => x.removeAttribute('autofocus'));
   document.body.appendChild(wrap);
   const panel = $('.sheet', wrap);
   const api = { el: wrap, body: $('.sheet-body', wrap), close, refresh: refresh || null, closed: false };
@@ -1660,6 +1673,15 @@ function eventBody(p) {
 /* ─── „Neues“: Ankündigungen auf der Startseite ──────────────────────────────
    Neuen Eintrag oben einfügen → die Kachel zeigt immer den neuesten. */
 const NEWS = [
+  {
+    id: '2026-11-23-fixes-7',
+    date: '2026-11-23',
+    label: '🛠️ Bug-Fixes',
+    items: [
+      { icon: '👤', title: 'Profil öffnen', text: 'Das Fenster „Mein Profil“ verschiebt sich beim ersten Öffnen nicht mehr.' },
+      { icon: '👆', title: 'Scrollen in Fenstern', text: 'Man kann jetzt überall im Fenster scrollen – auch wenn der Finger auf den Emojis oder Farben aufsetzt.' },
+    ],
+  },
   {
     id: '2026-11-23-snow',
     date: '2026-11-23',
