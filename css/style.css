@@ -1657,3 +1657,12 @@ html, body { overscroll-behavior-y: none; }
 }
 /* Kommentar-Vorschau unter Beiträgen wieder linksbündig */
 .last-comment { justify-content: flex-start; align-items: flex-start; text-align: left; }
+
+/* Kommentare: Original-Beitrag oben */
+.c-origin { padding: 14px; margin: 0 0 6px; border-radius: 20px; background: var(--fill); }
+.c-origin .post-head { margin-bottom: 8px; }
+.c-origin .post-text { font-size: 15px; }
+.c-origin .media-grid, .c-origin .poll, .c-origin .event { margin-bottom: 0; }
+.c-divider { display: flex; align-items: center; gap: 10px; margin: 14px 2px 12px; font-size: 12.5px; font-weight: 650; color: var(--text-2); text-transform: uppercase; letter-spacing: .04em; }
+.c-divider::after { content: ''; flex: 1; height: 1px; background: var(--border, color-mix(in srgb, var(--text) 12%, transparent)); }
+.c-empty { padding: 10px 0 18px; font-size: 14px; }
