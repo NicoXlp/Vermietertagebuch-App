@@ -1660,6 +1660,14 @@ function eventBody(p) {
    Neuen Eintrag oben einfügen → die Kachel zeigt immer den neuesten. */
 const NEWS = [
   {
+    id: '2026-11-23-xmas',
+    date: '2026-11-23',
+    label: '✨ Neue Funktionen',
+    items: [
+      { icon: '🎅', title: 'Weihnachtsmützen', text: 'Passend zum Winter trägt jedes Profilbild eine kleine Weihnachtsmütze – bis zum 26. Dezember.', act: 'tab', v: 'house', btn: 'Mitbewohner:innen ansehen' },
+    ],
+  },
+  {
     id: '2026-11-23-gta6',
     date: '2026-11-23',
     label: '✨ Neue Funktionen',
