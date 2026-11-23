@@ -4030,7 +4030,11 @@ function applyPalette() {
   // Für die Startanimation merken (wird beim nächsten Start sofort im HTML genutzt)
   LS.set('splash', { accent: btn.bg, fg: btn.fg, blobs: blobs.slice(0, 3) });
 }
+/** Winterzeit: Weihnachtsmützen auf den Profilbildern – ab dem 27.12.2026 automatisch wieder weg */
+const XMAS_UNTIL = '2026-12-27';
+const syncSeason = () => document.documentElement.classList.toggle('xmas', today() < XMAS_UNTIL);
 function applyTheme() {
+  syncSeason();
   const t = LS.get('theme', 'auto');
   if (t === 'auto') document.documentElement.removeAttribute('data-theme');
   else document.documentElement.dataset.theme = t;
@@ -4325,7 +4329,7 @@ let lastDay = today();
 let lastGreeting = greeting();
 setInterval(() => {
   // Tageswechsel oder neue Tageszeit (Guten Morgen / Tag / Abend) → neu zeichnen
-  if (today() !== lastDay || greeting() !== lastGreeting) { lastDay = today(); lastGreeting = greeting(); applyPalette(); render(); }
+  if (today() !== lastDay || greeting() !== lastGreeting) { lastDay = today(); lastGreeting = greeting(); syncSeason(); applyPalette(); render(); }
 }, 60000);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) { beat(true); render(); checkLocalReminders(); } else beat(false);
