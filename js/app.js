@@ -3103,10 +3103,21 @@ function commentsSheet(id) {
     const p = state.feed.find((x) => x.id === id);
     if (!p) return '<p class="muted">Beitrag wurde gelöscht.</p>';
     const cs = p.comments || [];
-    return cs.length ? cs.map((c) => `<div class="comment">${avatar(c.author, 32)}<div style="min-width:0;flex:1">
+    // Oben immer der Original-Beitrag, auf den sich die Kommentare beziehen
+    const tag = p.type === 'poll' ? '<span class="type-tag poll">Umfrage</span>' : p.type === 'event' ? '<span class="type-tag event">Ereignis</span>' : p.type === 'voice' ? '<span class="type-tag voice">Sprachnachricht</span>' : '';
+    const body = p.type === 'poll' ? pollBody(p) : p.type === 'event' ? eventBody(p) : p.type === 'voice' ? voiceBody(p)
+      : `${p.text ? `<div class="post-text">${richText(p.text)}</div>` : ''}${mediaGrid(p)}`;
+    const origin = `<div class="c-origin">
+        <div class="post-head">${avatar(p.author, 36)}<div style="flex:1;min-width:0">
+          <div class="who">${esc(member(p.author) ? dn(p.author) : 'Ehemaliges Mitglied')}</div>
+          <div class="meta">${tag}<span>${relTime(p.createdAt)}</span>${p.editedAt ? '<span>· bearbeitet</span>' : ''}</div></div></div>
+        ${body}
+      </div>
+      <div class="c-divider">${cs.length ? plural(cs.length, 'Kommentar', 'Kommentare') : 'Kommentare'}</div>`;
+    return origin + (cs.length ? cs.map((c) => `<div class="comment">${avatar(c.author, 32)}<div style="min-width:0;flex:1">
         <div class="bubble"><div class="who">${esc(dn(c.author))}</div><div class="txt">${richText(c.text)}</div></div>
         <div class="meta"><span>${relTime(c.at)}</span>${c.author === state.me ? `<button data-cdel="${c.id}">Löschen</button>` : ''}</div></div></div>`).join('')
-      : '<div class="empty"><div class="big">💬</div>Noch keine Kommentare. Schreib den ersten!</div>';
+      : '<div class="empty c-empty">Noch keine Kommentare. Schreib den ersten! 💬</div>');
   };
   openSheet({
     title: 'Kommentare',
@@ -3121,7 +3132,7 @@ function commentsSheet(id) {
     onMount: (api) => {
       const ta = $('#ct', api.el);
       attachMentions(ta);
-      setTimeout(() => { api.body.scrollTop = api.body.scrollHeight; }, 50);
+      api.body.scrollTop = 0; // Beim Öffnen: Beitrag oben sichtbar, Kommentare darunter
       ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; });
       ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && matchMedia('(hover: hover)').matches) { e.preventDefault(); $('#cf', api.el).requestSubmit(); } });
       $('#cf', api.el).onsubmit = (e) => {
