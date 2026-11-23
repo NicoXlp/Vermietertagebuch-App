@@ -9,10 +9,10 @@ export const NEWS = [
     date: '2026-11-23',
     label: '✨ Neue Funktionen',
     items: [
-      { icon: '🎄', title: 'Farbschema „Weihnachten“', text: 'Festliches Farbschema in Weihnachtsrot, Tannengrün und warmem Gold – nur bis zum 26. Dezember.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
+      { icon: '🎄', title: 'Farbschema „Weihnachten“', text: 'Festliches Farbschema in Weihnachtsrot, Tannengrün und warmem Gold – nur bis zum 26. Dezember. 💡 Tipp: Am schönsten wirkt es, wenn die App auf „Dunkel“ eingestellt ist.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
       { icon: '❄️', title: 'Es schneit', text: 'Auf der Startseite rieselt jetzt leise Schnee – bis zum 26. Dezember.' },
       { icon: '🎅', title: 'Weihnachtsmützen', text: 'Passend zum Winter trägt jedes Profilbild eine kleine Weihnachtsmütze – bis zum 26. Dezember.', act: 'tab', v: 'house', btn: 'Mitbewohner:innen ansehen' },
-      { icon: '🌴', title: 'Farbschema „GTA VI“', text: 'Zum Release von GTA VI gibt es exklusiv ein GTA-VI-Farbschema in Pink und Lila mit einem dezenten Hauch Orange – nur bis zum 12. Dezember, danach verschwindet es wieder.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
+      { icon: '🌴', title: 'Farbschema „GTA VI“', text: 'Zum Release von GTA VI gibt es exklusiv ein GTA-VI-Farbschema in Pink und Lila mit einem dezenten Hauch Orange – nur bis zum 12. Dezember, danach verschwindet es wieder. 💡 Tipp: Am schönsten wirkt es, wenn die App auf „Dunkel“ eingestellt ist.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
     ],
   },
   {
