@@ -1674,44 +1674,24 @@ function eventBody(p) {
    Neuen Eintrag oben einfügen → die Kachel zeigt immer den neuesten. */
 const NEWS = [
   {
-    id: '2026-11-23-fixes-7',
+    id: '2026-11-23-neu',
+    date: '2026-11-23',
+    label: '✨ Neue Funktionen',
+    items: [
+      { icon: '🎄', title: 'Farbschema „Weihnachten“', text: 'Festliches Farbschema in Weihnachtsrot, Tannengrün und warmem Gold – nur bis zum 26. Dezember.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
+      { icon: '❄️', title: 'Es schneit', text: 'Auf der Startseite rieselt jetzt leise und ganz dezent Schnee – bis zum 26. Dezember.' },
+      { icon: '🎅', title: 'Weihnachtsmützen', text: 'Passend zum Winter trägt jedes Profilbild eine kleine Weihnachtsmütze – bis zum 26. Dezember.', act: 'tab', v: 'house', btn: 'Mitbewohner:innen ansehen' },
+      { icon: '🌴', title: 'Farbschema „GTA VI“', text: 'Zum Release von GTA VI gibt es exklusiv ein GTA-VI-Farbschema in Pink und Lila mit einem dezenten Hauch Orange – nur bis zum 12. Dezember, danach verschwindet es wieder.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
+    ],
+  },
+  {
+    id: '2026-11-23-fixes',
     date: '2026-11-23',
     label: '🛠️ Bug-Fixes',
     items: [
       { icon: '👤', title: 'Profil öffnen', text: 'Das Fenster „Mein Profil“ verschiebt sich beim ersten Öffnen nicht mehr.' },
       { icon: '👆', title: 'Scrollen in Fenstern', text: 'Man kann jetzt überall im Fenster scrollen – auch wenn der Finger auf den Emojis oder Farben aufsetzt.' },
       { icon: '🧭', title: 'Fenster & Navigationsleiste', text: 'Fenster überlappen die Navigationsleiste nicht mehr – sie bleibt darunter immer frei sichtbar.' },
-    ],
-  },
-  {
-    id: '2026-11-23-snow',
-    date: '2026-11-23',
-    label: '✨ Neue Funktionen',
-    items: [
-      { icon: '❄️', title: 'Es schneit', text: 'Auf der Startseite rieselt jetzt leise und ganz dezent Schnee – bis zum 26. Dezember.' },
-    ],
-  },
-  {
-    id: '2026-11-23-xmas',
-    date: '2026-11-23',
-    label: '✨ Neue Funktionen',
-    items: [
-      { icon: '🎅', title: 'Weihnachtsmützen', text: 'Passend zum Winter trägt jedes Profilbild eine kleine Weihnachtsmütze – bis zum 26. Dezember.', act: 'tab', v: 'house', btn: 'Mitbewohner:innen ansehen' },
-    ],
-  },
-  {
-    id: '2026-11-23-gta6',
-    date: '2026-11-23',
-    label: '✨ Neue Funktionen',
-    items: [
-      { icon: '🌴', title: 'Farbschema „GTA VI“', text: 'Zum Release von GTA VI gibt es exklusiv ein GTA-VI-Farbschema in Pink und Lila mit einem dezenten Hauch Orange – nur bis zum 12. Dezember, danach verschwindet es wieder.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
-    ],
-  },
-  {
-    id: '2026-11-23-fixes-6',
-    date: '2026-11-23',
-    label: '🛠️ Bug-Fixes',
-    items: [
       { icon: '⌨️', title: 'Fenster beim Tippen', text: 'Beim Kommentieren rutscht das Fenster auf dem iPhone nicht mehr ganz nach oben – es bleibt direkt über der Tastatur.' },
       { icon: '💬', title: 'Kommentare linksbündig', text: 'Der neueste Kommentar unter einem Beitrag steht wieder links statt mittig.' },
     ],
@@ -4022,7 +4002,10 @@ const PALETTES = {
   // Sonder-Farbschema zum Erscheinen von GTA VI (19.11.2026) – nur bis einschließlich 12.12.2026,
   // ab dem 13.12.2026 verschwindet es automatisch (wer es nutzt, bekommt wieder Indigo).
   gta6: { name: 'GTA VI', until: '2026-12-13', badge: 'bis 12.12.', accent: ['#e0336f', '#ff5fa2'], accent2: ['#7c3aed', '#a78bfa'],
-    light: ['#ff9ec7', '#c9a8ff', '#f5a3e6', '#ffc89a'], dark: ['#b8336a', '#6a2fc2', '#9c2a8e', '#b0603a'] },
+    light: ['#ff9ec7', '#c9a8ff', '#f5a3e6', '#ffc89a'], dark: ['#b8336a', '#6a2fc2', '#9c2a8e', '#b0603a'], badgeBg: 'linear-gradient(90deg, #ff5fa2, #b98cff)' },
+  // Sonder-Farbschema Weihnachten – nur bis einschließlich 26.12.2026, ab dem 27.12.2026 automatisch weg
+  xmas: { name: 'Weihnachten', until: '2026-12-27', badge: 'bis 26.12.', accent: ['#c8202f', '#ff5a64'], accent2: ['#1d7f45', '#3fcf7c'],
+    light: ['#ffb0b5', '#b7e4c4', '#ffe2a0', '#f6cfd4'], dark: ['#8c1b28', '#1b5a37', '#7f6116', '#5e1a28'], badgeBg: 'linear-gradient(90deg, #e23b45, #2fa35f)' },
 };
 /** Ist ein Farbschema heute verfügbar? (zeitlich begrenzte verschwinden ab ihrem Enddatum) */
 const paletteAvailable = (p) => !!p && (!p.until || today() < p.until);
@@ -4144,7 +4127,7 @@ function paletteHtml() {
   const cur = LS.get('palette', 'indigo');
   const d = isDark() ? 1 : 0;
   return `<div class="palettes">${Object.entries(PALETTES).filter(([, p]) => paletteAvailable(p)).map(([k, p]) => `
-    <button class="palette ${cur === k ? 'on' : ''} ${p.until ? 'limited' : ''}" data-act="palette" data-v="${k}" aria-label="Farbschema ${p.name}${p.until ? ` (nur ${p.badge})` : ''}">${p.badge ? `<b class="pal-badge">${p.badge}</b>` : ''}
+    <button class="palette ${cur === k ? 'on' : ''} ${p.until ? 'limited' : ''}" data-act="palette" data-v="${k}" aria-label="Farbschema ${p.name}${p.until ? ` (nur ${p.badge})` : ''}">${p.badge ? `<b class="pal-badge" style="${p.badgeBg ? `background:${p.badgeBg}` : ''}">${p.badge}</b>` : ''}
       <span class="pal-swatch" style="background:linear-gradient(135deg, ${p[d ? 'dark' : 'light'][0]}, ${p[d ? 'dark' : 'light'][1]} 55%, ${p[d ? 'dark' : 'light'][2]})"><i style="background:${p.accent[d]}"></i></span>
       <span>${p.name}</span></button>`).join('')}
     <label class="palette ${cur === 'custom' ? 'on' : ''}" aria-label="Eigene Farbe">
