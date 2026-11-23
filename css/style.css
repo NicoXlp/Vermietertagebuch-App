@@ -1898,3 +1898,12 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 
 /* Kommentarfeld (nimmt Tastatur-Sticker an) */
 #cf .c-input { min-height: 44px; }
+
+.stk-row.off { opacity: .4; } /* Zoom bei „Ganz“ ausgegraut */
+/* Sticker-Formen: 5 Möglichkeiten – auf Handys in 5 gleich breiten Spalten */
+@media (max-width: 480px) {
+  .stk-shapes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .stk-shapes .chip { flex-direction: column; justify-content: center; gap: 1px; padding: 6px 2px; font-size: 12px; min-width: 0; border-radius: 16px; line-height: 1.15; }
+  .stk-shapes .chip .e { font-size: 17px; }
+}
+@media (max-height: 700px) { .stk-stage { width: min(100%, 340px, 31dvh); } }
