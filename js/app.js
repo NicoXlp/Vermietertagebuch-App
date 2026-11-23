@@ -1680,6 +1680,7 @@ const NEWS = [
     items: [
       { icon: '👤', title: 'Profil öffnen', text: 'Das Fenster „Mein Profil“ verschiebt sich beim ersten Öffnen nicht mehr.' },
       { icon: '👆', title: 'Scrollen in Fenstern', text: 'Man kann jetzt überall im Fenster scrollen – auch wenn der Finger auf den Emojis oder Farben aufsetzt.' },
+      { icon: '🧭', title: 'Fenster & Navigationsleiste', text: 'Fenster überlappen die Navigationsleiste nicht mehr – sie bleibt darunter immer frei sichtbar.' },
     ],
   },
   {
