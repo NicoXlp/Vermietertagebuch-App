@@ -124,6 +124,7 @@ const I = {
   pause: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>',
   photo: svg('<rect x="3" y="5" width="18" height="15" rx="3.5"/><circle cx="12" cy="12.5" r="3.6"/><path d="M8.5 5 10 3h4l1.5 2"/>'),
   sticker: svg('<path d="M20.5 13.5V7A3.5 3.5 0 0 0 17 3.5H7A3.5 3.5 0 0 0 3.5 7v10A3.5 3.5 0 0 0 7 20.5h6.5z"/><path d="M13.5 20.5v-3.5a3.5 3.5 0 0 1 3.5-3.5h3.5"/><path d="M8.5 10h.01M14.5 10h.01M9 14c1.6 1.2 3.4 1.2 5 0"/>'),
+  pin: svg('<path d="M9 3.5h6l-1 5.5 3.5 3.5v1.5h-11V12.5L10 9z"/><path d="M12 14v6.5"/>'),
   mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>'),
   house: svg('<path d="M3 11 12 4l9 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/>'),
 };
@@ -2108,7 +2109,7 @@ function dmMessagesHtml(id, ui = {}) {
         <div class="dm-ops">
           <button data-reply="${m.id}">${I.reply}Antworten</button>
           ${m.text ? `<button data-copy="${m.id}">${I.copy}Kopieren</button>` : ''}
-          ${m.sticker && !mine ? `<button data-stksave="${m.id}">${I.sticker}Sticker speichern</button>` : ''}
+          ${m.sticker && !stickerLibOf().some((x) => x.data === m.sticker.data) ? `<button data-stksave="${m.id}">${I.sticker}Speichern</button>` : ''}
           ${mine ? `<button class="danger" data-dmdel="${m.id}">${I.trash}Löschen</button>` : ''}
         </div>
       </div>` : ''}
@@ -2167,7 +2168,7 @@ function chatSheet(id) {
         <button type="button" class="icon-btn dm-tool" id="dm-task" aria-label="Aufgabe zuteilen" title="Aufgabe zuteilen">${I.tasks}</button>
         <label class="icon-btn dm-tool" aria-label="Foto oder Video senden" title="Foto oder Video senden">${I.photo}<input type="file" id="dm-file" accept="image/*,video/*" multiple hidden></label>
         <button type="button" class="icon-btn dm-tool" id="dm-stk" aria-label="Sticker senden" title="Sticker">${I.sticker}</button>
-        <textarea id="dmt" rows="1" maxlength="2000" placeholder="Nachricht …" aria-label="Nachricht an ${esc(dn(id))}"></textarea>
+        <div id="dmt" class="dm-input" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" autocapitalize="sentences" data-ph="Nachricht …" aria-label="Nachricht an ${esc(dn(id))}"></div>
         <button type="button" class="send" id="dm-mic" aria-label="Sprachnachricht aufnehmen">${I.mic}</button>
         <button type="submit" class="send" id="dm-send" aria-label="Senden" hidden>${I.send}</button>
       </form>`,
@@ -2182,14 +2183,55 @@ function chatSheet(id) {
       root = api.el;
       api.el.classList.add('dm-sheet');
       const f = $('#dmf', api.el), ta = $('#dmt', api.el), list = $('#dmlist', api.el);
-      const sync = () => { const has = !!ta.value.trim(); $('#dm-send', f).hidden = !has; $('#dm-mic', f).hidden = has; };
-      ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; sync(); });
+      ensureStickerSub();
+      const textOf = () => (ta.innerText || '').replace(/\u00a0/g, ' ').replace(/\n$/, '');
+      const sync = () => { const has = !!textOf().trim(); $('#dm-send', f).hidden = !has; $('#dm-mic', f).hidden = has; };
+      // Sticker/Bilder aus der Tastatur (iPhone-Sticker, Genmoji, Gboard) oder eingefügte Bilder → als Sticker senden
+      const sendKbSticker = async (src) => {
+        try {
+          const st = await imageToSticker(src);
+          sendDm(id, { sticker: st, ...replyData() }, { pushBody: '🌟 Sticker' });
+          setReply(null);
+          setTimeout(() => { list.scrollTop = list.scrollHeight; }, 80);
+        } catch (err) { console.error(err); toast('⚠️ Der Sticker konnte nicht gesendet werden'); }
+      };
+      const imgFiles = (dt) => [...(dt?.files || [])].filter((x) => x.type.startsWith('image/'));
+      const sendFiles = (files) => files.slice(0, 4).forEach((x) => { const u = URL.createObjectURL(x); sendKbSticker(u).finally(() => setTimeout(() => URL.revokeObjectURL(u), 4000)); });
+      ta.addEventListener('beforeinput', (e) => {
+        const files = imgFiles(e.dataTransfer);
+        if (files.length) { e.preventDefault(); sendFiles(files); }
+      });
+      ta.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const files = imgFiles(e.clipboardData);
+        if (files.length) return sendFiles(files);
+        const text = e.clipboardData?.getData('text/plain') || '';
+        if (text) document.execCommand('insertText', false, text);
+      });
+      ta.addEventListener('drop', (e) => {
+        const files = imgFiles(e.dataTransfer);
+        e.preventDefault();
+        if (files.length) sendFiles(files);
+      });
+      ta.addEventListener('input', () => {
+        // eingefügte Bilder herausnehmen und als Sticker senden
+        ta.querySelectorAll('img, picture').forEach((el) => {
+          const im = el.tagName === 'IMG' ? el : el.querySelector('img');
+          const src = im?.currentSrc || im?.src;
+          el.remove();
+          if (src) sendKbSticker(src);
+        });
+        // nur reiner Text: Formatierungen entfernen, leeres Feld wirklich leer (Platzhalter)
+        if (ta.querySelector(':not(br):not(div):not(span)')) { const t = textOf(); ta.textContent = t; placeCaretEnd(ta); }
+        if (!textOf().trim() && !ta.querySelector('img')) ta.innerHTML = '';
+        sync();
+      });
       ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && matchMedia('(hover: hover)').matches) { e.preventDefault(); f.requestSubmit(); } });
       f.onsubmit = (e) => {
         e.preventDefault();
-        const text = ta.value.trim();
+        const text = textOf().trim().slice(0, 2000);
         if (!text) return;
-        ta.value = ''; ta.style.height = ''; sync();
+        ta.innerHTML = ''; sync();
         sendDm(id, { text, ...replyData() });
         setReply(null);
         setTimeout(() => { list.scrollTop = list.scrollHeight; }, 60);
@@ -2407,6 +2449,26 @@ function stickerPanel(to, extra = {}, onSent) {
       });
     },
   });
+}
+
+/** Bild (z. B. Sticker aus der Tastatur) → Sticker-Daten, höchstens 384 px, Transparenz bleibt erhalten */
+async function imageToSticker(src) {
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Bild nicht lesbar')); i.src = src; });
+  const enc = (max) => {
+    const f = Math.min(1, max / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+    const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * f)); c.height = Math.max(1, Math.round(img.naturalHeight * f));
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    let d = c.toDataURL('image/webp', 0.86);
+    if (!d.startsWith('data:image/webp')) d = c.toDataURL('image/png');
+    return { data: d, w: c.width, h: c.height };
+  };
+  let out = enc(384);
+  if (out.data.length > 260_000) out = enc(288);
+  if (out.data.length > 260_000) out = enc(224);
+  return out;
+}
+function placeCaretEnd(el) {
+  try { const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch { /* egal */ }
 }
 
 /** Zuschneiden: Form wählen (Kreis, Quadrat, Herz) oder frei mit dem Finger ausschneiden */
@@ -2659,15 +2721,16 @@ function dmListSheet() {
     const others = membersSorted().filter((m) => m.id !== state.me);
     if (!others.length) return '<div class="empty"><div class="big">💬</div>Noch niemand außer dir im Haus.</div>';
     const last = (id) => dmWith(id).at(-1);
-    others.sort((a, b) => (last(b.id)?.createdAt || 0) - (last(a.id)?.createdAt || 0));
+    const pin = dmPinned();
+    others.sort((a, b) => (b.id === pin) - (a.id === pin) || (last(b.id)?.createdAt || 0) - (last(a.id)?.createdAt || 0));
     return `<div class="list card tight">${others.map((m) => {
-      const l = last(m.id), n = dmUnread(m.id);
-      return `<button class="list-item" data-dm="${m.id}">
+      const l = last(m.id), n = dmUnread(m.id), pinned = m.id === pin;
+      return `<div class="dm-row ${pinned ? 'pinned' : ''}"><button class="list-item" data-dm="${m.id}">
         ${avatar(m.id, 44)}
         <div class="main"><div class="title">${esc(dn(m.id))}${m.floor ? ` <span class="floor-tag">${esc(floorName(m.floor))}</span>` : ''}</div>
           <div class="sub ${n ? 'strong' : ''}">${l ? esc(dmPreview(l)) : 'Noch keine Nachrichten'}</div></div>
         <div class="dm-side">${l ? `<span class="small muted">${esc(shortTime(l.createdAt))}</span>` : ''}${n ? `<b class="badge">${n}</b>` : ''}</div>
-      </button>`;
+      </button><button class="dm-pin ${pinned ? 'on' : ''}" data-pin="${m.id}" aria-pressed="${pinned}" aria-label="${pinned ? 'Chat lösen' : 'Chat anpinnen'}" title="${pinned ? 'Lösen' : 'Anpinnen'}">${I.pin}</button></div>`;
     }).join('')}</div>
     <p class="small muted center" style="margin:14px 8px 0">🔒 Privatnachrichten sehen nur die beiden Personen im Chat.</p>`;
   };
@@ -2676,10 +2739,23 @@ function dmListSheet() {
     html: `<div id="dml">${html()}</div>`,
     refresh: (api) => { $('#dml', api.el).innerHTML = html(); },
     onMount: (api) => {
-      api.body.addEventListener('click', (e) => { const b = e.target.closest('[data-dm]'); if (b) chatSheet(b.dataset.dm); });
+      api.body.addEventListener('click', (e) => {
+        const pb = e.target.closest('[data-pin]');
+        if (pb) {
+          const id = pb.dataset.pin, was = dmPinned();
+          if (was === id) { LS.del('dmPin'); toast('Chat gelöst'); }
+          else { LS.set('dmPin', id); toast(was && member(was) ? `📌 ${dn(id)} angepinnt (statt ${dn(was)})` : `📌 ${dn(id)} angepinnt`); }
+          haptic(10);
+          $('#dml', api.el).innerHTML = html();
+          return;
+        }
+        const b = e.target.closest('[data-dm]'); if (b) chatSheet(b.dataset.dm);
+      });
     },
   });
 }
+/** Angepinnter Chat (höchstens einer, auf diesem Gerät) */
+function dmPinned() { const id = LS.get('dmPin', null); return id && member(id) && id !== state.me ? id : null; }
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
