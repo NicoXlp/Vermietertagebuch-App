@@ -1841,3 +1841,22 @@ html.xmas .profile-photo .av::before { display: none; }
 .stk-border { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; cursor: pointer; white-space: nowrap; }
 .stk-border input { width: 20px; height: 20px; margin: 0; accent-color: var(--accent); }
 .stk-stage + .stk-shapes + .stk-tip + .stk-row + .sheet-actions { margin-top: 8px; }
+
+/* ─── Privatchat: Eingabefeld (nimmt auch Sticker aus der Tastatur an) ─── */
+.dm-input {
+  flex: 1; min-width: 0; min-height: 44px; max-height: 140px; overflow-y: auto; padding: 11px 16px; border-radius: 22px;
+  background: var(--fill); font-size: 16px; line-height: 1.25; outline: 0; white-space: pre-wrap; overflow-wrap: anywhere;
+  -webkit-user-select: text; user-select: text; cursor: text; color: var(--text);
+}
+.dm-input:empty::before { content: attr(data-ph); color: var(--text-3); pointer-events: none; }
+.dm-input img { max-height: 1.4em; vertical-align: middle; }
+
+/* ─── Chat anpinnen ─── */
+.dm-row { position: relative; display: flex; align-items: stretch; }
+.dm-row .list-item { flex: 1; min-width: 0; padding-right: 4px; }
+.dm-pin { flex: none; width: 44px; display: grid; place-items: center; color: var(--text-3); background: none; border: 0; cursor: pointer; }
+.dm-pin svg { width: 19px; height: 19px; transform: rotate(35deg); transition: transform .25s var(--spring); }
+.dm-pin.on { color: var(--accent); }
+.dm-pin.on svg { fill: currentColor; transform: rotate(0deg); }
+.dm-pin:active svg { transform: scale(.85); }
+.dm-row.pinned { background: color-mix(in srgb, var(--accent) 9%, transparent); }

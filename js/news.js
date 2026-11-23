@@ -5,11 +5,13 @@
 // Bitte keine Browser-APIs hier verwenden.
 export const NEWS = [
   {
-    id: '2026-11-23-sticker',
+    id: '2026-11-23-sticker-pin',
     date: '2026-11-23',
     label: '✨ Neue Funktionen',
     items: [
       { icon: '🌟', title: 'Eigene Sticker im Privatchat', text: 'Mach aus deinen Fotos eigene Sticker: als Kreis, Quadrat oder Herz zuschneiden oder frei mit dem Finger ausschneiden, auf Wunsch mit weißem Rand. Tippe im Privatchat auf das Sticker-Symbol, um sie zu erstellen und zu senden. Sticker, die du bekommst, kannst du gedrückt halten und speichern.' },
+      { icon: '📌', title: 'Chat anpinnen', text: 'In der Nachrichtenübersicht kannst du einen Privatchat mit der Stecknadel anpinnen. Er steht dann immer ganz oben.' },
+      { icon: '⌨️', title: 'Sticker aus der Tastatur', text: 'Sticker und Bilder aus deiner Tastatur kannst du jetzt direkt im Privatchat versenden. Einfach im Eingabefeld auswählen.' },
     ],
   },
   {
