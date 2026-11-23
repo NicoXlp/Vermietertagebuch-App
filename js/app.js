@@ -4043,61 +4043,11 @@ const syncSeason = () => document.documentElement.classList.toggle('xmas', today
    Bewusst unaufdringlich: wenige kleine, sehr durchsichtige Flocken, die langsam vor den Kacheln
    rieseln (nicht anklickbar). Davor statt dahinter, weil das Milchglas der Kacheln sonst bei jedem Bild
    neu berechnet werden müsste. Läuft nur auf der Startseite und nur, solange die App sichtbar ist. */
-const snow = { cv: null, ctx: null, flakes: [], raf: 0, last: 0, w: 0, h: 0, dpr: 1 };
-function snowWanted() {
-  return state.ready && today() < XMAS_UNTIL && !document.hidden
-    && !matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
-function snowResize() {
-  if (!snow.cv) return;
-  snow.dpr = Math.min(2, window.devicePixelRatio || 1);
-  snow.w = window.innerWidth; snow.h = window.innerHeight;
-  snow.cv.width = Math.round(snow.w * snow.dpr); snow.cv.height = Math.round(snow.h * snow.dpr);
-  snow.ctx.setTransform(snow.dpr, 0, 0, snow.dpr, 0, 0);
-  // Dichte an die Fläche anpassen: Handy ≈ 70, großer Bildschirm höchstens 140 Flocken
-  const n = Math.max(50, Math.min(140, Math.round(snow.w * snow.h / 5500)));
-  while (snow.flakes.length < n) snow.flakes.push(newFlake(true));
-  snow.flakes.length = n;
-}
-function newFlake(anywhere) {
-  const r = 1 + Math.random() * 2; // 1–3 px: klein und zart
-  return { x: Math.random() * (snow.w || 400), y: anywhere ? Math.random() * (snow.h || 800) : -6,
-    r, vy: 14 + r * 9 + Math.random() * 8, // langsam: 20–50 px pro Sekunde
-    sway: 8 + Math.random() * 16, phase: Math.random() * 6.28, a: .28 + Math.random() * .34 }; // durchsichtig
-}
-function snowFrame(t) {
-  snow.raf = requestAnimationFrame(snowFrame);
-  // ~24 Bilder pro Sekunde reichen für langsam rieselnden Schnee – spart Akku und Rechenleistung
-  if (snow.last && t - snow.last < 40) return;
-  const dt = Math.min(.08, (t - (snow.last || t)) / 1000); snow.last = t;
-  const { ctx, w, h } = snow;
-  ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = isDark() ? '#ffffff' : '#9fb3d6'; // im Hellen leicht bläulich, sonst unsichtbar
-  for (const f of snow.flakes) {
-    f.y += f.vy * dt; f.phase += dt * .8;
-    const x = f.x + Math.sin(f.phase) * f.sway;
-    if (f.y > h + 6) Object.assign(f, newFlake(false));
-    ctx.globalAlpha = f.a;
-    ctx.beginPath(); ctx.arc(x, f.y, f.r, 0, 6.2832); ctx.fill();
-  }
-}
+// Schnee: die Ebenen legt index.html an (schon für die Startanimation), hier nur ein- und ausschalten
 function syncSnow() {
-  const want = snowWanted();
-  if (!want) {
-    if (snow.raf) { cancelAnimationFrame(snow.raf); snow.raf = 0; }
-    if (snow.cv) snow.cv.hidden = true;
-    return;
-  }
-  if (!snow.cv) {
-    snow.cv = document.createElement('canvas');
-    snow.cv.id = 'snow'; snow.cv.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(snow.cv);
-    snow.ctx = snow.cv.getContext('2d');
-    addEventListener('resize', snowResize);
-    document.addEventListener('visibilitychange', syncSnow);
-  }
-  snow.cv.hidden = false;
-  if (!snow.raf) { snowResize(); snow.last = 0; snow.raf = requestAnimationFrame(snowFrame); }
+  const want = today() < XMAS_UNTIL && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const el = document.getElementById('snow') || (want ? window.vtSnow?.() : null);
+  if (el) el.hidden = !want;
 }
 function applyTheme() {
   syncSeason();
