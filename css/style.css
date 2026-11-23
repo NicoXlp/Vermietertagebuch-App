@@ -1683,3 +1683,9 @@ html, body { overscroll-behavior-y: none; }
 .sheet-body.c-body { display: flex; flex-direction: column; overflow: hidden; min-height: 0; flex: 1 1 auto; }
 .c-body #clist { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; margin: 0 -18px; padding: 0 18px 4px; }
 .c-body #cf { position: static; flex: none; }
+
+/* Tippen in einem Fenster: kein Milchglas während die Tastatur auf-/zugeht (flüssiger auf iPhones) */
+html.typing-sheet .sheet-wrap .sheet {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background: color-mix(in srgb, var(--glass-bg-strong) 88%, var(--bg));
+}
