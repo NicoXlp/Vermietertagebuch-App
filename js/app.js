@@ -3398,6 +3398,75 @@ function reactSheet(id) {
   });
 }
 
+/* ─── Eingabefeld mit „contenteditable“, das sich wie ein Textfeld verhält ──────────────────
+   Nötig, damit die Tastatur (iPhone-Sticker, Genmoji, Gboard) Bilder einfügen kann – in ein normales
+   Textfeld geht das nicht. ceField() liefert value/selectionStart/setSelectionRange wie bei <textarea>. */
+function ceText(root) {
+  let out = '';
+  const rec = (n) => n.childNodes.forEach((c) => {
+    if (c.nodeType === 3) out += c.data;
+    else if (c.nodeName === 'BR') { if (c !== n.lastChild || c.previousSibling?.nodeName === 'BR') out += '\n'; }
+    else if (c.nodeType === 1 && c.nodeName !== 'IMG' && c.nodeName !== 'PICTURE') {
+      if (/^(DIV|P)$/.test(c.nodeName) && out && !out.endsWith('\n')) out += '\n';
+      rec(c);
+    }
+  });
+  rec(root);
+  return out.replace(/ /g, ' ');
+}
+function ceField(el) {
+  const caret = () => {
+    const sel = getSelection();
+    if (!sel?.rangeCount || !el.contains(sel.anchorNode)) return ceText(el).length;
+    const r = document.createRange(); r.selectNodeContents(el); r.setEnd(sel.anchorNode, sel.anchorOffset);
+    const d = document.createElement('div'); d.appendChild(r.cloneContents());
+    return ceText(d).length;
+  };
+  return {
+    el,
+    get value() { return ceText(el); },
+    set value(v) { el.textContent = v; },
+    get selectionStart() { return caret(); },
+    setSelectionRange(pos) {
+      // Text-Knoten durchlaufen und die Einfügemarke an Stelle `pos` setzen
+      let left = pos; let node = null, off = 0;
+      const walk = (n) => { for (const c of n.childNodes) { if (node) return; if (c.nodeType === 3) { if (left <= c.data.length) { node = c; off = left; return; } left -= c.data.length; } else if (c.nodeName === 'BR') { left -= 1; } else walk(c); } };
+      walk(el);
+      try { const r = document.createRange(); if (node) r.setStart(node, off); else { r.selectNodeContents(el); r.collapse(false); } r.collapse(true); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); } catch { /* egal */ }
+    },
+    set placeholder(t) { el.dataset.ph = t; },
+    get placeholder() { return el.dataset.ph || ''; },
+    focus: (o) => el.focus(o),
+    blur: () => el.blur(),
+    addEventListener: (...a) => el.addEventListener(...a),
+    dispatchEvent: (e) => el.dispatchEvent(e),
+    insertAdjacentElement: (w, n) => el.insertAdjacentElement(w, n),
+    get style() { return el.style; },
+  };
+}
+/** Bilder (Tastatur-Sticker, Einfügen, Hineinziehen) im Eingabefeld abfangen und als Sticker weitergeben; Text bleibt reiner Text */
+function attachStickerInput(el, onSticker) {
+  const send = async (src, revoke) => {
+    try { onSticker(await imageToSticker(src)); } catch (err) { console.error(err); toast('⚠️ Der Sticker konnte nicht gesendet werden'); } finally { if (revoke) setTimeout(() => URL.revokeObjectURL(src), 4000); }
+  };
+  const imgFiles = (dt) => [...(dt?.files || [])].filter((x) => x.type.startsWith('image/'));
+  const sendFiles = (files) => files.slice(0, 4).forEach((x) => send(URL.createObjectURL(x), true));
+  el.addEventListener('beforeinput', (e) => { const f = imgFiles(e.dataTransfer); if (f.length) { e.preventDefault(); sendFiles(f); } });
+  el.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const f = imgFiles(e.clipboardData);
+    if (f.length) return sendFiles(f);
+    const text = e.clipboardData?.getData('text/plain') || '';
+    if (text) document.execCommand('insertText', false, text);
+  });
+  el.addEventListener('drop', (e) => { const f = imgFiles(e.dataTransfer); e.preventDefault(); if (f.length) sendFiles(f); });
+  el.addEventListener('input', () => {
+    el.querySelectorAll('img, picture').forEach((n) => { const im = n.tagName === 'IMG' ? n : n.querySelector('img'); const src = im?.currentSrc || im?.src; n.remove(); if (src) send(src, false); });
+    if (el.querySelector(':not(br):not(div):not(span)')) { const t = ceText(el); el.textContent = t; placeCaretEnd(el); }
+    if (!ceText(el).trim()) el.innerHTML = '';
+  });
+}
+
 /** Kommentar als kurzer Text (Sticker → „🌟 Sticker“) */
 const cText = (c) => (c?.sticker ? '🌟 Sticker' : c?.text || '');
 function commentsSheet(id) {
@@ -3440,7 +3509,7 @@ function commentsSheet(id) {
     title: 'Kommentare',
     html: `<div id="clist">${listHtml()}</div>
       <div class="c-replybar" id="c-rb" hidden></div>
-      <form class="composer mention-field" id="cf"><button type="button" class="icon-btn c-stk" id="c-stk" aria-label="Mit Sticker kommentieren" title="Sticker">${I.sticker}</button><textarea id="ct" rows="1" maxlength="1000" placeholder="Kommentieren …" aria-label="Kommentar"></textarea><button class="send" aria-label="Senden">${I.send}</button></form>`,
+      <form class="composer mention-field" id="cf"><button type="button" class="icon-btn c-stk" id="c-stk" aria-label="Mit Sticker kommentieren" title="Sticker">${I.sticker}</button><div id="ct" class="dm-input c-input" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" autocapitalize="sentences" data-ph="Kommentieren …" aria-label="Kommentar"></div><button class="send" aria-label="Senden">${I.send}</button></form>`,
     refresh: (api) => {
       const l = $('#clist', api.el);
       const atBottom = l.scrollHeight - l.scrollTop - l.clientHeight < 40;
@@ -3449,12 +3518,15 @@ function commentsSheet(id) {
       l.scrollTop = atBottom ? l.scrollHeight : y;
     },
     onMount: (api) => {
-      const ta = $('#ct', api.el);
+      const ctEl = $('#ct', api.el), ta = ceField(ctEl);
       attachMentions(ta);
       api.body.classList.add('c-body');
       $('#clist', api.el).scrollTop = 0; // Beim Öffnen: Beitrag oben sichtbar, Kommentare darunter
-      ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; });
-      ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && matchMedia('(hover: hover)').matches) { e.preventDefault(); $('#cf', api.el).requestSubmit(); } });
+      ta.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey && matchMedia('(hover: hover)').matches) {
+          e.preventDefault(); $('#cf', api.el).requestSubmit();
+        }
+      });
       const postComment = ({ text = '', sticker = null }) => {
         haptic(8);
         const replyTo = reply;
@@ -3474,19 +3546,14 @@ function commentsSheet(id) {
       };
       $('#cf', api.el).onsubmit = (e) => {
         e.preventDefault();
-        const text = ta.value.trim();
+        const text = ta.value.trim().slice(0, 1000);
         if (!text) return;
-        ta.value = ''; ta.style.height = '';
+        ctEl.innerHTML = '';
         postComment({ text });
       };
       $('#c-stk', api.el).onclick = () => stickerPanel(null, {}, null, { hint: 'Antippen, um mit dem Sticker zu kommentieren', onPick: (sticker) => postComment({ sticker }) });
-      // Bild aus der Zwischenablage/Tastatur einfügen → als Sticker kommentieren
-      ta.addEventListener('paste', (e) => {
-        const files = [...(e.clipboardData?.files || [])].filter((x) => x.type.startsWith('image/'));
-        if (!files.length) return;
-        e.preventDefault();
-        files.slice(0, 2).forEach((x) => { const u = URL.createObjectURL(x); imageToSticker(u).then((sticker) => postComment({ sticker })).catch(() => toast('⚠️ Der Sticker konnte nicht gesendet werden')).finally(() => setTimeout(() => URL.revokeObjectURL(u), 4000)); });
-      });
+      // Sticker aus der Tastatur / eingefügte Bilder → als Sticker kommentieren
+      attachStickerInput(ctEl, (sticker) => postComment({ sticker }));
       // Antworten, Liken, Reagieren
       let reply = null;
       const rb = $('#c-rb', api.el);
