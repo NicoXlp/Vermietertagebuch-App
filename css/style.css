@@ -1675,7 +1675,8 @@ html, body { overscroll-behavior-y: none; }
 /* Schließen flüssig: während des Ausblendens kein Milchglas neu berechnen (teuer auf iPhones) */
 .sheet-wrap.closing .sheet {
   -webkit-backdrop-filter: none; backdrop-filter: none;
-  background: color-mix(in srgb, var(--glass-bg-strong) 88%, var(--bg));
+  /* deckend: Glasfarbe auf vollem Hintergrund – nichts von dahinter scheint durch */
+  background: linear-gradient(var(--glass-bg-strong), var(--glass-bg-strong)), var(--bg);
 }
 .sheet-wrap.closing { pointer-events: none; }
 
@@ -1687,5 +1688,6 @@ html, body { overscroll-behavior-y: none; }
 /* Tippen in einem Fenster: kein Milchglas während die Tastatur auf-/zugeht (flüssiger auf iPhones) */
 html.typing-sheet .sheet-wrap .sheet {
   -webkit-backdrop-filter: none; backdrop-filter: none;
-  background: color-mix(in srgb, var(--glass-bg-strong) 88%, var(--bg));
+  /* deckend: Glasfarbe auf vollem Hintergrund – nichts von dahinter scheint durch */
+  background: linear-gradient(var(--glass-bg-strong), var(--glass-bg-strong)), var(--bg);
 }
