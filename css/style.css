@@ -1650,8 +1650,8 @@ html, body { overscroll-behavior-y: none; }
 /* „Wer hat was zu tun?“: „· 1 überfällig“ darf umbrechen statt abgeschnitten zu werden */
 .person .stat.load { white-space: normal; overflow: visible; }
 
-/* Fenster beim Tippen direkt über der Tastatur (statt vom iPhone ganz nach oben geschoben) */
-@media (max-width: 699px) {
+/* Fenster beim Tippen direkt über der Tastatur (statt vom iPhone/iPad ganz nach oben geschoben) */
+@media (hover: none) and (pointer: coarse) {
   .sheet-wrap.kb-anchored { top: var(--kb-top, 0px); bottom: auto; height: var(--kb-h, 100%); align-items: flex-end; padding-top: 8px; padding-bottom: 8px; }
   .sheet-wrap.kb-anchored .sheet { max-height: calc(var(--kb-h, 100dvh) - 16px); }
 }
@@ -1673,10 +1673,12 @@ html, body { overscroll-behavior-y: none; }
 }
 
 /* Schließen flüssig: während des Ausblendens kein Milchglas neu berechnen (teuer auf iPhones) */
+@media (hover: none) and (pointer: coarse) {
 .sheet-wrap.closing .sheet {
   -webkit-backdrop-filter: none; backdrop-filter: none;
   /* deckend: Glasfarbe auf vollem Hintergrund – nichts von dahinter scheint durch */
   background: linear-gradient(var(--glass-bg-strong), var(--glass-bg-strong)), var(--bg);
+}
 }
 .sheet-wrap.closing { pointer-events: none; }
 
@@ -1686,8 +1688,10 @@ html, body { overscroll-behavior-y: none; }
 .c-body #cf { position: static; flex: none; }
 
 /* Tippen in einem Fenster: kein Milchglas während die Tastatur auf-/zugeht (flüssiger auf iPhones) */
+@media (hover: none) and (pointer: coarse) {
 html.typing-sheet .sheet-wrap .sheet {
   -webkit-backdrop-filter: none; backdrop-filter: none;
   /* deckend: Glasfarbe auf vollem Hintergrund – nichts von dahinter scheint durch */
   background: linear-gradient(var(--glass-bg-strong), var(--glass-bg-strong)), var(--bg);
+}
 }

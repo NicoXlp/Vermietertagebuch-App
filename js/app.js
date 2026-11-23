@@ -559,6 +559,8 @@ window.visualViewport?.addEventListener('resize', () => { if (!typing()) settleV
    nach oben und das Fenster landet ganz oben. Stattdessen: Fenster genau über der Tastatur halten –
    es rückt nur so weit hoch wie nötig. (Privatchat füllt ohnehin die ganze Höhe und bleibt, wie er ist.) */
 /** Fenster weich an die neue Stelle gleiten lassen statt springen (FLIP: alte Lage merken, umstellen, hingleiten) */
+// Handys und Tablets (iPad) mit Bildschirmtastatur – PCs mit Maus bleiben unberührt
+const TOUCH_MQ = '(hover: none) and (pointer: coarse)';
 function glideSheet(wrap, change) {
   const sh = wrap?.querySelector('.sheet');
   if (!sh) { change(); return; }
@@ -575,7 +577,7 @@ function anchorSheetToKeyboard() {
   document.querySelectorAll('.sheet-wrap.kb-anchored').forEach((w) => {
     if (w !== wrap && !pre(w)) glideSheet(w, () => { w.classList.remove('kb-anchored'); w.style.removeProperty('--kb-top'); w.style.removeProperty('--kb-h'); });
   });
-  if (!vv || !wrap || !typing() || !matchMedia('(max-width: 699px) and (hover: none)').matches) return;
+  if (!vv || !wrap || !typing() || !matchMedia(TOUCH_MQ).matches) return;
   const open = window.innerHeight - vv.height > 120; // Tastatur sichtbar
   if (!open) { if (wrap.classList.contains('kb-anchored') && !pre(wrap)) glideSheet(wrap, () => wrap.classList.remove('kb-anchored')); return; }
   LS.set('kbH', Math.round(window.innerHeight - vv.height)); // Tastaturhöhe merken – nächstes Mal passt die Vorab-Position genau
@@ -593,7 +595,7 @@ function anchorSheetToKeyboard() {
 function preAnchorSheet(el) {
   if (!isTextField(el)) return;
   const wrap = el.closest?.('.sheet-wrap:not(.dm-sheet)');
-  if (!wrap || wrap.classList.contains('kb-anchored') || !matchMedia('(max-width: 699px) and (hover: none)').matches) return;
+  if (!wrap || wrap.classList.contains('kb-anchored') || !matchMedia(TOUCH_MQ).matches) return;
   const kbH = LS.get('kbH', 0) > 120 ? LS.get('kbH') : Math.round(window.innerHeight * 0.46);
   wrap.dataset.preAt = Date.now();
   setTimeout(anchorFrame, 1000); // kommt doch keine Tastatur (z. B. externe Tastatur), wieder normal hinsetzen
