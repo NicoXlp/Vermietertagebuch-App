@@ -9,6 +9,7 @@ export const NEWS = [
     date: '2026-11-23',
     label: '✨ Neue Funktionen',
     items: [
+      { icon: '🌟', title: 'Eigene Sticker im Privatchat', text: 'Mach aus deinen Fotos eigene Sticker: als Kreis, Quadrat oder Herz zuschneiden oder frei mit dem Finger ausschneiden, auf Wunsch mit weißem Rand. Tippe im Privatchat auf das Sticker-Symbol, um sie zu erstellen und zu senden. Sticker, die du bekommst, kannst du gedrückt halten und speichern.' },
       { icon: '💬', title: 'Kommentare antworten & reagieren', text: 'Auf Kommentare kannst du jetzt direkt antworten, sie mit ❤️ liken oder mit einem Emoji darauf reagieren.', act: 'tab', v: 'board', btn: 'Zum Social Hub' },
       { icon: '🎄', title: 'Farbschema „Weihnachten“', text: 'Festliches Farbschema in Weihnachtsrot, Tannengrün und warmem Gold, nur bis zum 26. Dezember. 💡 Tipp: Am schönsten wirkt es, wenn die App auf „Dunkel“ eingestellt ist.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
       { icon: '❄️', title: 'Es schneit', text: 'In der ganzen App rieselt jetzt bis zum 26. Dezember leise Schnee.' },
