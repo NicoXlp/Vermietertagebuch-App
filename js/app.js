@@ -2485,12 +2485,12 @@ async function stickerEditor(file) {
     URL.revokeObjectURL(url);
     img = c;
   } catch (e) { return toast(`⚠️ ${e.message}`, 4000); }
-  const SHAPES = [['circle', '⭕', 'Kreis'], ['square', '⬜', 'Quadrat'], ['heart', '❤️', 'Herz'], ['free', '✂️', 'Frei']];
+  const SHAPES = [['full', '🖼️', 'Ganz'], ['circle', '⭕', 'Kreis'], ['square', '⬜', 'Quadrat'], ['heart', '❤️', 'Herz'], ['free', '✂️', 'Frei']];
   const st = { shape: 'circle', z: 1, ox: 0, oy: 0, border: true, lasso: [], drawing: false };
   openSheet({
     title: '✂️ Zuschneiden',
     html: `<div class="stk-stage" id="stk-stage"><canvas id="stk-cv"></canvas></div>
-      <div class="stk-shapes" role="radiogroup" aria-label="Form">${SHAPES.map(([k, e, n]) => `<button type="button" class="chip" data-shape="${k}" role="radio">${e} ${n}</button>`).join('')}</div>
+      <div class="stk-shapes" role="radiogroup" aria-label="Form">${SHAPES.map(([k, e, n]) => `<button type="button" class="chip" data-shape="${k}" role="radio"><span class="e">${e}</span><span>${n}</span></button>`).join('')}</div>
       <p class="small muted center stk-tip" id="stk-tip"></p>
       <div class="stk-row"><span class="small muted">Zoom</span><input type="range" id="stk-zoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><label class="stk-border"><input type="checkbox" id="stk-border" checked><span>Rand</span></label></div>
       <div class="sheet-actions"><button class="btn" type="button" data-close>Abbrechen</button><button class="btn primary" type="button" id="stk-save">Speichern</button></div>`,
@@ -2500,12 +2500,16 @@ async function stickerEditor(file) {
       let S = 300, dpr = 1;
       const size = () => { S = stage.clientWidth || 300; dpr = Math.min(3, devicePixelRatio || 1); cv.width = S * dpr; cv.height = S * dpr; paint(); };
       // Bildlage: „cover“ in der Fläche, dann Zoom und Verschiebung
-      const geo = () => { const base = Math.max(S / img.width, S / img.height), sc = base * st.z, dw = img.width * sc, dh = img.height * sc;
+      const geo = () => {
+        // „Ganz“: komplettes Bild sichtbar (einpassen), sonst Fläche füllen + Zoom/Verschieben
+        if (st.shape === 'full') { const m = S * 0.07, sc = Math.min((S - 2 * m) / img.width, (S - 2 * m) / img.height), dw = img.width * sc, dh = img.height * sc; return { sc, x: (S - dw) / 2, y: (S - dh) / 2, dw, dh }; }
+        const base = Math.max(S / img.width, S / img.height), sc = base * st.z, dw = img.width * sc, dh = img.height * sc;
         return { sc, x: S / 2 - dw / 2 + st.ox, y: S / 2 - dh / 2 + st.oy, dw, dh }; };
       const clampPan = () => { const g = geo(); const mx = Math.max(0, (g.dw - S) / 2), my = Math.max(0, (g.dh - S) / 2); st.ox = Math.max(-mx, Math.min(mx, st.ox)); st.oy = Math.max(-my, Math.min(my, st.oy)); };
       const shapePath = (shape = st.shape) => {
         const p = new Path2D(), m = S * 0.07, w = S - 2 * m;
-        if (shape === 'circle') p.arc(S / 2, S / 2, w / 2, 0, Math.PI * 2);
+        if (shape === 'full') { const g = geo(), r = Math.min(g.dw, g.dh) * 0.08, x0 = g.x, y0 = g.y, x1 = g.x + g.dw, y1 = g.y + g.dh; p.moveTo(x0 + r, y0); p.arcTo(x1, y0, x1, y1, r); p.arcTo(x1, y1, x0, y1, r); p.arcTo(x0, y1, x0, y0, r); p.arcTo(x0, y0, x1, y0, r); p.closePath(); }
+        else if (shape === 'circle') p.arc(S / 2, S / 2, w / 2, 0, Math.PI * 2);
         else if (shape === 'square') { const r = w * 0.2; p.moveTo(m + r, m); p.arcTo(m + w, m, m + w, m + w, r); p.arcTo(m + w, m + w, m, m + w, r); p.arcTo(m, m + w, m, m, r); p.arcTo(m, m, m + w, m, r); p.closePath(); }
         else if (shape === 'heart') {
           const X = (u) => m + u * w, Y = (v) => m + v * w;
@@ -2539,7 +2543,8 @@ async function stickerEditor(file) {
           ctx.save(); ctx.lineWidth = 2.5; ctx.strokeStyle = '#fff'; ctx.setLineDash(st.drawing ? [] : [7, 6]); ctx.lineJoin = ctx.lineCap = 'round';
           ctx.shadowColor = 'rgba(0,0,0,.5)'; ctx.shadowBlur = 3; ctx.stroke(shapePath()); ctx.restore();
         }
-        tip.textContent = st.shape === 'free'
+        zoom.disabled = st.shape === 'full'; zoom.closest('.stk-row').classList.toggle('off', st.shape === 'full');
+        tip.textContent = st.shape === 'full' ? 'Das komplette Bild wird zum Sticker 🖼️' : st.shape === 'free'
           ? (lassoOk() && !st.drawing ? 'Fertig ausgeschnitten ✂️ Nochmal zeichnen, um neu anzufangen' : 'Fahre mit dem Finger einmal um das Motiv herum')
           : 'Ziehen zum Verschieben · mit zwei Fingern oder dem Regler zoomen';
         api.el.querySelectorAll('[data-shape]').forEach((b) => { const on = b.dataset.shape === st.shape; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
@@ -2562,6 +2567,7 @@ async function stickerEditor(file) {
       stage.addEventListener('pointermove', (e) => {
         if (!pts.has(e.pointerId)) return;
         const prev = pts.get(e.pointerId), cur = local(e); pts.set(e.pointerId, cur);
+        if (st.shape === 'full') return;
         if (pts.size === 2 && last) {
           const p = pinch();
           st.z = Math.max(1, Math.min(4, last.z * p.d / (last.d || 1))); zoom.value = st.z;
@@ -2581,7 +2587,7 @@ async function stickerEditor(file) {
         if (st.drawing && !pts.size) { st.drawing = false; if (!lassoOk()) st.lasso = []; else haptic(12); paint(); }
       };
       stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
-      stage.addEventListener('wheel', (e) => { e.preventDefault(); st.z = Math.max(1, Math.min(4, st.z * (e.deltaY < 0 ? 1.08 : 1 / 1.08))); zoom.value = st.z; clampPan(); paint(); }, { passive: false });
+      stage.addEventListener('wheel', (e) => { e.preventDefault(); if (st.shape === 'full') return; st.z = Math.max(1, Math.min(4, st.z * (e.deltaY < 0 ? 1.08 : 1 / 1.08))); zoom.value = st.z; clampPan(); paint(); }, { passive: false });
 
       $('#stk-save', api.el).onclick = () => {
         if (st.shape === 'free' && !lassoOk()) return toast('Schneide zuerst etwas aus ✂️');
@@ -2592,7 +2598,7 @@ async function stickerEditor(file) {
           const g = geo(), xs = st.lasso.map((p) => g.x + p[0] * g.sc), ys = st.lasso.map((p) => g.y + p[1] * g.sc);
           bx = Math.min(...xs); by = Math.min(...ys); bw = Math.max(...xs) - bx; bh = Math.max(...ys) - by;
           if (Math.min(bw, bh) < 24) return toast('Das Stück ist zu klein – zeichne etwas größer');
-        } else { const m = S * 0.07; bx = by = m; bw = bh = S - 2 * m; }
+        } else if (st.shape === 'full') { const g = geo(); bx = g.x; by = g.y; bw = g.dw; bh = g.dh; } else { const m = S * 0.07; bx = by = m; bw = bh = S - 2 * m; }
         const encode = (O) => {
           const b = st.border ? O * 0.035 : 0, pad = b + 2, k = (O - 2 * pad) / Math.max(bw, bh);
           const c = document.createElement('canvas'); c.width = Math.round(bw * k + 2 * pad); c.height = Math.round(bh * k + 2 * pad);
