@@ -1664,7 +1664,7 @@ const NEWS = [
     date: '2026-11-23',
     label: '✨ Neue Funktionen',
     items: [
-      { icon: '🌴', title: 'Farbschema „GTA VI“', text: 'Zum Erscheinen von GTA VI gibt es exklusiv ein Sonnenuntergangs-Farbschema in Pink, Orange, Lila und Türkis – nur bis zum 12. Dezember, danach verschwindet es wieder.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
+      { icon: '🌴', title: 'Farbschema „GTA VI“', text: 'Zum Erscheinen von GTA VI gibt es exklusiv ein Sonnenuntergangs-Farbschema in Pink und Lila mit einem Hauch Orange – nur bis zum 12. Dezember, danach verschwindet es wieder.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
     ],
   },
   {
@@ -3982,7 +3982,7 @@ const PALETTES = {
   // Sonder-Farbschema zum Erscheinen von GTA VI (19.11.2026) – nur bis einschließlich 12.12.2026,
   // ab dem 13.12.2026 verschwindet es automatisch (wer es nutzt, bekommt wieder Indigo).
   gta6: { name: 'GTA VI', until: '2026-12-13', badge: 'bis 12.12.', accent: ['#e0336f', '#ff5fa2'], accent2: ['#7c3aed', '#a78bfa'],
-    light: ['#ffb48a', '#ff9ec7', '#c4a6ff', '#8ce8de'], dark: ['#b8336a', '#c2561a', '#5b2fb8', '#0f766e'] },
+    light: ['#ff9ec7', '#c9a8ff', '#f5a3e6', '#ffc28f'], dark: ['#b8336a', '#6a2fc2', '#9c2a8e', '#a85418'] },
 };
 /** Ist ein Farbschema heute verfügbar? (zeitlich begrenzte verschwinden ab ihrem Enddatum) */
 const paletteAvailable = (p) => !!p && (!p.until || today() < p.until);
