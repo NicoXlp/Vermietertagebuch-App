@@ -70,7 +70,19 @@ export const EVENT_TYPES = [
   ['bin_done', '🗑️ Tonne wurde rausgestellt'],
   ['mention', '🏷️ Wenn mich jemand markiert'],
   ['feedback', '💡 Neue Wünsche & Bug-Meldungen'],
+  ['app_news', '📰 Neues in der App (Neue Funktionen & Bug-Fixes)'],
 ];
+
+/** Push-Text für eine „Neues“-Meldung: Art im Titel, Stichpunkte im Text */
+export function newsPushText(n) {
+  const fixes = /bug/i.test(n.label || '');
+  const titles = (n.items || []).map((it) => it.title).filter(Boolean);
+  const list = titles.slice(0, 4).join(' · ') + (titles.length > 4 ? ` · und ${titles.length - 4} mehr` : '');
+  return {
+    title: fixes ? '🛠️ Bug-Fixes im Vermietertagebuch' : '✨ Neue Funktionen im Vermietertagebuch',
+    body: list || 'Schau mal unter „Neues“ rein!',
+  };
+}
 
 /** Welche Neuigkeiten gehen an dieses Mitglied? (nicht an die auslösende Person, nur an Empfänger, abgeschaltete Arten weg) */
 export function eventsFor(events, memberId, prefs, now = Date.now()) {
