@@ -1316,7 +1316,7 @@ function postCard(p, compact = false) {
       <button class="act" data-act="react-pick" data-id="${p.id}" aria-label="Reagieren">${I.smile}</button>
       ${likes.length ? `<span class="spacer"></span><span class="av-stack">${likes.slice(0, 4).map((id) => avatar(id, 24)).join('')}</span>` : ''}
     </div>
-    ${!compact && last ? `<button class="last-comment" data-act="comments" data-id="${p.id}">${avatar(last.author, 22)}<span><b>${esc(dn(last.author))}</b>${richText(last.text.slice(0, 120))}${comments.length > 1 ? ` <span class="muted">· alle ${comments.length} ansehen</span>` : ''}</span></button>` : ''}
+    ${!compact && last ? `<button class="last-comment" data-act="comments" data-id="${p.id}">${avatar(last.author, 22)}<span><b>${esc(dn(last.author))}</b>${last.sticker ? `<img class="lc-sticker" alt="Sticker" src="${esc(last.sticker.data)}">` : richText((last.text || '').slice(0, 120))}${comments.length > 1 ? ` <span class="muted">· alle ${comments.length} ansehen</span>` : ''}</span></button>` : ''}
   </article>`;
 }
 
@@ -2412,12 +2412,12 @@ function saveSticker(data, w, h) {
   toast('🌟 Sticker gespeichert');
 }
 
-function stickerPanel(to, extra = {}, onSent) {
+function stickerPanel(to, extra = {}, onSent, { hint = '', onPick = null } = {}) {
   ensureStickerSub();
   let editing = false, draw = null;
   openSheet({
     title: '🌟 Sticker',
-    html: `<div class="stk-top"><span class="small muted">Antippen zum Senden an ${esc(dn(to))}</span><button type="button" class="link-btn" id="stk-edit" hidden>Bearbeiten</button></div>
+    html: `<div class="stk-top"><span class="small muted">${esc(hint || `Antippen zum Senden an ${dn(to)}`)}</span><button type="button" class="link-btn" id="stk-edit" hidden>Bearbeiten</button></div>
       <div class="stk-grid" id="stk-grid"></div>`,
     onClose: () => stickerListeners.delete(draw),
     onMount: (api) => {
@@ -2443,6 +2443,7 @@ function stickerPanel(to, extra = {}, onSent) {
           if (await confirmSheet('Diesen Sticker aus deiner Sammlung löschen?')) { removeDoc('stickers', s.id); draw(); }
           return;
         }
+        if (onPick) { onPick({ data: s.data, w: s.w || 1, h: s.h || 1 }); api.close(); return; }
         sendDm(to, { sticker: { data: s.data, w: s.w || 1, h: s.h || 1 }, ...extra }, { pushBody: '🌟 Sticker' });
         onSent?.();
         api.close();
@@ -3397,6 +3398,8 @@ function reactSheet(id) {
   });
 }
 
+/** Kommentar als kurzer Text (Sticker → „🌟 Sticker“) */
+const cText = (c) => (c?.sticker ? '🌟 Sticker' : c?.text || '');
 function commentsSheet(id) {
   const listHtml = () => {
     const p = state.feed.find((x) => x.id === id);
@@ -3419,9 +3422,9 @@ function commentsSheet(id) {
       const liked = likes.includes(state.me);
       const reacts = Object.entries(c.reactions || {}).filter(([, v]) => v.length).sort((a, b) => b[1].length - a[1].length);
       const q = c.replyTo ? byId[c.replyTo] : null;
-      const quote = c.replyTo ? `<button type="button" class="c-quote" data-cjump="${esc(c.replyTo)}">↪ ${q ? `<b>${esc(dn(q.author))}</b> ${esc(snippet(q.text, 60))}` : 'Kommentar gelöscht'}</button>` : '';
+      const quote = c.replyTo ? `<button type="button" class="c-quote" data-cjump="${esc(c.replyTo)}">↪ ${q ? `<b>${esc(dn(q.author))}</b> ${esc(snippet(cText(q), 60))}` : 'Kommentar gelöscht'}</button>` : '';
       return `<div class="comment ${c.replyTo ? 'is-reply' : ''}" id="c-${esc(c.id)}">${avatar(c.author, 32)}<div style="min-width:0;flex:1">
-        <div class="bubble">${quote}<div class="who">${esc(dn(c.author))}</div><div class="txt">${richText(c.text)}</div></div>
+        <div class="bubble ${c.sticker ? 'stk' : ''}">${quote}<div class="who">${esc(dn(c.author))}</div>${c.sticker ? `<img class="c-sticker" alt="Sticker" src="${esc(c.sticker.data)}" style="aspect-ratio:${+c.sticker.w || 1}/${+c.sticker.h || 1}">` : `<div class="txt">${richText(c.text)}</div>`}</div>
         ${reacts.length ? `<div class="c-reacts">${reacts.map(([em, v]) => `<button type="button" class="reaction ${v.includes(state.me) ? 'mine' : ''}" data-creact="${esc(c.id)}" data-e="${esc(em)}" title="${esc(v.map(nameOf).join(', '))}"><span class="e">${esc(em)}</span>${v.length}</button>`).join('')}</div>` : ''}
         <div class="meta"><span>${relTime(c.at)}</span>
           <button type="button" class="c-like ${liked ? 'on' : ''}" data-clike="${esc(c.id)}" aria-pressed="${liked}" title="${esc(likes.map(nameOf).join(', '))}">${liked ? '❤️' : '🤍'}${likes.length ? ` ${likes.length}` : ''}</button>
@@ -3437,7 +3440,7 @@ function commentsSheet(id) {
     title: 'Kommentare',
     html: `<div id="clist">${listHtml()}</div>
       <div class="c-replybar" id="c-rb" hidden></div>
-      <form class="composer mention-field" id="cf"><textarea id="ct" rows="1" maxlength="1000" placeholder="Kommentieren …" aria-label="Kommentar"></textarea><button class="send" aria-label="Senden">${I.send}</button></form>`,
+      <form class="composer mention-field" id="cf"><button type="button" class="icon-btn c-stk" id="c-stk" aria-label="Mit Sticker kommentieren" title="Sticker">${I.sticker}</button><textarea id="ct" rows="1" maxlength="1000" placeholder="Kommentieren …" aria-label="Kommentar"></textarea><button class="send" aria-label="Senden">${I.send}</button></form>`,
     refresh: (api) => {
       const l = $('#clist', api.el);
       const atBottom = l.scrollHeight - l.scrollTop - l.clientHeight < 40;
@@ -3452,26 +3455,38 @@ function commentsSheet(id) {
       $('#clist', api.el).scrollTop = 0; // Beim Öffnen: Beitrag oben sichtbar, Kommentare darunter
       ta.addEventListener('input', () => { ta.style.height = 'auto'; ta.style.height = Math.min(140, ta.scrollHeight) + 'px'; });
       ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && matchMedia('(hover: hover)').matches) { e.preventDefault(); $('#cf', api.el).requestSubmit(); } });
+      const postComment = ({ text = '', sticker = null }) => {
+        haptic(8);
+        const replyTo = reply;
+        const target = replyTo ? (state.feed.find((x) => x.id === id)?.comments || []).find((c) => c.id === replyTo) : null;
+        mutate('feed', id, (p) => ({ ...p, comments: [...(p.comments || []), { id: newId(), author: state.me, text, ...(sticker ? { sticker } : {}), at: Date.now(), ...(replyTo ? { replyTo } : {}) }] }));
+        setReply(null);
+        const post = state.feed.find((x) => x.id === id);
+        const body = sticker ? '🌟 Sticker' : snippet(text, 120);
+        if (target && target.author !== state.me) {
+          emit('social', { title: `↩️ ${myName()} hat auf deinen Kommentar geantwortet`, body, to: [target.author], tab: 'board', tag: `creply-${id}` });
+        }
+        if (post && post.author !== state.me && post.author !== target?.author) {
+          emit('social', { title: `💬 ${myName()} hat kommentiert`, body, to: [post.author], tab: 'board', tag: `comment-${id}` });
+        }
+        if (text) emitMentions(text, { exclude: post && post.author !== state.me ? [post.author] : [], what: 'einem Kommentar' });
+        setTimeout(() => { const l = $('#clist', api.el); l.scrollTop = l.scrollHeight; }, 80);
+      };
       $('#cf', api.el).onsubmit = (e) => {
         e.preventDefault();
         const text = ta.value.trim();
         if (!text) return;
         ta.value = ''; ta.style.height = '';
-        haptic(8);
-        const replyTo = reply;
-        const target = replyTo ? (state.feed.find((x) => x.id === id)?.comments || []).find((c) => c.id === replyTo) : null;
-        mutate('feed', id, (p) => ({ ...p, comments: [...(p.comments || []), { id: newId(), author: state.me, text, at: Date.now(), ...(replyTo ? { replyTo } : {}) }] }));
-        setReply(null);
-        const post = state.feed.find((x) => x.id === id);
-        if (target && target.author !== state.me) {
-          emit('social', { title: `↩️ ${myName()} hat auf deinen Kommentar geantwortet`, body: snippet(text, 120), to: [target.author], tab: 'board', tag: `creply-${id}` });
-        }
-        if (post && post.author !== state.me && post.author !== target?.author) {
-          emit('social', { title: `💬 ${myName()} hat kommentiert`, body: snippet(text, 120), to: [post.author], tab: 'board', tag: `comment-${id}` });
-        }
-        emitMentions(text, { exclude: post && post.author !== state.me ? [post.author] : [], what: 'einem Kommentar' });
-        setTimeout(() => { const l = $('#clist', api.el); l.scrollTop = l.scrollHeight; }, 80);
+        postComment({ text });
       };
+      $('#c-stk', api.el).onclick = () => stickerPanel(null, {}, null, { hint: 'Antippen, um mit dem Sticker zu kommentieren', onPick: (sticker) => postComment({ sticker }) });
+      // Bild aus der Zwischenablage/Tastatur einfügen → als Sticker kommentieren
+      ta.addEventListener('paste', (e) => {
+        const files = [...(e.clipboardData?.files || [])].filter((x) => x.type.startsWith('image/'));
+        if (!files.length) return;
+        e.preventDefault();
+        files.slice(0, 2).forEach((x) => { const u = URL.createObjectURL(x); imageToSticker(u).then((sticker) => postComment({ sticker })).catch(() => toast('⚠️ Der Sticker konnte nicht gesendet werden')).finally(() => setTimeout(() => URL.revokeObjectURL(u), 4000)); });
+      });
       // Antworten, Liken, Reagieren
       let reply = null;
       const rb = $('#c-rb', api.el);
@@ -3479,7 +3494,7 @@ function commentsSheet(id) {
         reply = cid;
         const c = cid ? (state.feed.find((x) => x.id === id)?.comments || []).find((x) => x.id === cid) : null;
         rb.hidden = !c;
-        rb.innerHTML = c ? `<span>↪ Antwort an <b>${esc(dn(c.author))}</b>: ${esc(snippet(c.text, 50))}</span><button type="button" aria-label="Antwort abbrechen">✕</button>` : '';
+        rb.innerHTML = c ? `<span>↪ Antwort an <b>${esc(dn(c.author))}</b>: ${esc(snippet(cText(c), 50))}</span><button type="button" aria-label="Antwort abbrechen">✕</button>` : '';
         ta.placeholder = c ? `Antwort an ${dn(c.author)} …` : 'Kommentieren …';
       };
       rb.addEventListener('click', (e) => { if (e.target.closest('button')) setReply(null); });
@@ -3494,7 +3509,7 @@ function commentsSheet(id) {
           const had = (c.likes || []).includes(state.me);
           haptic(had ? 6 : 12);
           editComment(c.id, (x) => ({ ...x, likes: had ? (x.likes || []).filter((u) => u !== state.me) : [...(x.likes || []), state.me] }));
-          if (!had && c.author !== state.me) emit('social', { title: `❤️ ${myName()} gefällt dein Kommentar`, body: snippet(c.text, 120), to: [c.author], tab: 'board', tag: `clike-${c.id}` });
+          if (!had && c.author !== state.me) emit('social', { title: `❤️ ${myName()} gefällt dein Kommentar`, body: snippet(cText(c), 120), to: [c.author], tab: 'board', tag: `clike-${c.id}` });
           return;
         }
         const rp = e.target.closest('[data-creply]');
@@ -3519,7 +3534,7 @@ function commentsSheet(id) {
             if (!had) r[em] = [...(r[em] || []), state.me];
             return { ...x, reactions: r };
           });
-          if (!had && c.author !== state.me) emit('social', { title: `${em} ${myName()} hat auf deinen Kommentar reagiert`, body: snippet(c.text, 120), to: [c.author], tab: 'board', tag: `creact-${c.id}` });
+          if (!had && c.author !== state.me) emit('social', { title: `${em} ${myName()} hat auf deinen Kommentar reagiert`, body: snippet(cText(c), 120), to: [c.author], tab: 'board', tag: `creact-${c.id}` });
           return;
         }
         const j = e.target.closest('[data-cjump]');
