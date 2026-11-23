@@ -565,11 +565,14 @@ const TOUCH_MQ = '(hover: none) and (pointer: coarse)';
 function glideSheet(wrap, change) {
   const sh = wrap?.querySelector('.sheet');
   if (!sh) { change(); return; }
+  // Startpunkt = wo das Fenster gerade SICHTBAR ist (auch mitten in einer laufenden Gleitbewegung)
   const before = sh.getBoundingClientRect().top;
+  sh.getAnimations?.().forEach((a) => { if (a.id === 'glide') a.cancel(); });
   change();
   const dy = before - sh.getBoundingClientRect().top;
   if (Math.abs(dy) < 2 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-  sh.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.2, .9, .3, 1)' });
+  // Weiche Kurve, etwa so lang wie die iPhone-Tastatur zum Hochfahren braucht
+  sh.animate([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { id: 'glide', duration: 340, easing: 'cubic-bezier(.25, .8, .25, 1)' });
 }
 function anchorSheetToKeyboard() {
   const vv = window.visualViewport;
@@ -585,6 +588,12 @@ function anchorSheetToKeyboard() {
   const top = `${Math.round(vv.offsetTop)}px`, h = `${Math.round(vv.height)}px`;
   // Nur umstellen, wenn sich wirklich etwas geändert hat (sonst unnötiges Neuzeichnen = Ruckeln)
   if (wrap.classList.contains('kb-anchored') && wrap.style.getPropertyValue('--kb-top') === top && wrap.style.getPropertyValue('--kb-h') === h) return;
+  // Hat das iPhone nur die Ansicht verschoben (gleiche Höhe)? Dann sofort und unsichtbar ausgleichen –
+  // das Fenster bleibt so auf dem Bildschirm ruhig stehen, statt mitzuhüpfen.
+  if (wrap.classList.contains('kb-anchored') && wrap.style.getPropertyValue('--kb-h') === h) { wrap.style.setProperty('--kb-top', top); return; }
+  // Während die Tastatur noch hochfährt, darf das Fenster nur nach oben wandern – nie kurz zurück nach unten
+  const curH = parseFloat(wrap.style.getPropertyValue('--kb-h')) || Infinity;
+  if (wrap.classList.contains('kb-anchored') && pre(wrap) && Math.round(vv.height) > curH) { wrap.style.setProperty('--kb-top', top); return; }
   glideSheet(wrap, () => {
     wrap.style.setProperty('--kb-top', top);
     wrap.style.setProperty('--kb-h', h);
@@ -602,18 +611,36 @@ function preAnchorSheet(el) {
   if (!wrap || wrap.classList.contains('kb-anchored') || !matchMedia(TOUCH_MQ).matches) return;
   const kbH = LS.get('kbH', 0) > 120 ? LS.get('kbH') : Math.round(window.innerHeight * 0.46);
   wrap.dataset.preAt = Date.now();
-  setTimeout(anchorFrame, 1000); // kommt doch keine Tastatur (z. B. externe Tastatur), wieder normal hinsetzen
+  setTimeout(anchorFrame, 1000); // Tastatur steht: einmal exakt nachjustieren (oder ohne Tastatur wieder normal hinsetzen)
   glideSheet(wrap, () => {
-    wrap.style.setProperty('--kb-top', '0px');
+    wrap.style.setProperty('--kb-top', `${Math.round(window.visualViewport?.offsetTop || 0)}px`);
     wrap.style.setProperty('--kb-h', `${Math.max(240, window.innerHeight - kbH)}px`);
     wrap.classList.add('kb-anchored');
   });
 }
-let anchorRaf = 0;
+let anchorRaf = 0, anchorStable = 0, vvSig = '';
 const anchorFrame = () => { cancelAnimationFrame(anchorRaf); anchorRaf = requestAnimationFrame(anchorSheetToKeyboard); };
-const anchorSoon = () => { anchorFrame(); setTimeout(anchorFrame, 120); setTimeout(anchorFrame, 400); };
-window.visualViewport?.addEventListener('resize', anchorSoon);
-window.visualViewport?.addEventListener('scroll', anchorFrame);
+/* Während die Tastatur hoch- oder runterfährt, meldet das iPhone ständig neue Größen. Das Fenster
+   wird erst neu gesetzt, wenn sich nichts mehr bewegt (kein Hin- und Herspringen dazwischen). */
+const anchorWhenStill = () => {
+  clearTimeout(anchorStable);
+  const vv = window.visualViewport;
+  const sig = vv ? `${Math.round(vv.height)}|${Math.round(vv.offsetTop)}` : '';
+  anchorStable = setTimeout(() => {
+    const now = vv ? `${Math.round(vv.height)}|${Math.round(vv.offsetTop)}` : '';
+    if (now !== sig) return anchorWhenStill(); // bewegt sich noch
+    vvSig = now; anchorFrame();
+  }, 90);
+};
+const anchorSoon = () => { anchorWhenStill(); setTimeout(anchorWhenStill, 450); };
+window.visualViewport?.addEventListener('resize', anchorWhenStill);
+// Verschieben der Ansicht durch das iPhone: im selben Bild ausgleichen (kein Warten)
+window.visualViewport?.addEventListener('scroll', () => { panFix(); anchorWhenStill(); });
+function panFix() {
+  const vv = window.visualViewport;
+  const w = document.querySelector('.sheet-wrap.kb-anchored');
+  if (vv && w) w.style.setProperty('--kb-top', `${Math.round(vv.offsetTop)}px`);
+}
 // Beim Tippen in einem Fenster: Milchglas sofort abschalten – das iPhone muss es sonst während
 // der Tastatur-Animation ständig neu berechnen (Ruckeln). Sieht fast gleich aus.
 document.addEventListener('focusin', (e) => {
