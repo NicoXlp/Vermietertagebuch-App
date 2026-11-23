@@ -3913,7 +3913,7 @@ const ACTIONS = {
   'member-new': () => memberSheet(null),
   'member-edit': (d) => memberSheet(d.id),
   theme: (d) => { LS.set('theme', d.v); applyTheme(); renderNow(false); },
-  palette: (d) => { LS.set('palette', d.v); applyPalette(); haptic(8); renderNow(false); },
+  palette: (d) => { if (PALETTES[d.v] && !paletteAvailable(PALETTES[d.v])) return; LS.set('palette', d.v); applyPalette(); haptic(8); renderNow(false); },
   cloud: () => cloudSheet(),
   'copy-invite': async () => {
     try { await navigator.clipboard.writeText(inviteLink()); toast('🔗 Einladungslink kopiert'); } catch { prompt('Einladungslink:', inviteLink()); }
@@ -3971,7 +3971,13 @@ const PALETTES = {
     light: ['#fbcfe8', '#f5d0fe', '#fecdd3', '#ddd6fe'], dark: ['#831843', '#701a75', '#881337', '#4c1d95'] },
   graphite: { name: 'Graphit', accent: ['#3f3f46', '#d4d4d8'], accent2: ['#52525b', '#a1a1aa'],
     light: ['#d4d4d8', '#e4e4e7', '#cbd5e1', '#e7e5e4'], dark: ['#27272a', '#3f3f46', '#1e293b', '#292524'] },
+  // Sonder-Farbschema zum Erscheinen von GTA VI (19.11.2026) – nur bis einschließlich 12.12.2026,
+  // ab dem 13.12.2026 verschwindet es automatisch (wer es nutzt, bekommt wieder Indigo).
+  gta6: { name: 'GTA VI', until: '2026-12-13', badge: 'bis 12.12.', accent: ['#e0336f', '#ff5fa2'], accent2: ['#7c3aed', '#a78bfa'],
+    light: ['#ffb48a', '#ff9ec7', '#c4a6ff', '#8ce8de'], dark: ['#b8336a', '#c2561a', '#5b2fb8', '#0f766e'] },
 };
+/** Ist ein Farbschema heute verfügbar? (zeitlich begrenzte verschwinden ab ihrem Enddatum) */
+const paletteAvailable = (p) => !!p && (!p.until || today() < p.until);
 /** Relative Leuchtdichte (WCAG) einer Hex-Farbe */
 function luminance(hex) {
   const m = String(hex).replace('#', '').match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
@@ -3995,7 +4001,9 @@ const isDark = () => {
   return t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches);
 };
 function applyPalette() {
-  const key = LS.get('palette', 'indigo');
+  let key = LS.get('palette', 'indigo');
+  // Abgelaufenes Sonder-Farbschema → zurück auf Indigo
+  if (PALETTES[key] && !paletteAvailable(PALETTES[key])) { key = 'indigo'; LS.set('palette', key); }
   const custom = LS.get('accentCustom', null);
   const p = PALETTES[key] || PALETTES.indigo;
   const d = isDark() ? 1 : 0;
@@ -4031,8 +4039,8 @@ function syncAppIcon() {
 function paletteHtml() {
   const cur = LS.get('palette', 'indigo');
   const d = isDark() ? 1 : 0;
-  return `<div class="palettes">${Object.entries(PALETTES).map(([k, p]) => `
-    <button class="palette ${cur === k ? 'on' : ''}" data-act="palette" data-v="${k}" aria-label="Farbschema ${p.name}">
+  return `<div class="palettes">${Object.entries(PALETTES).filter(([, p]) => paletteAvailable(p)).map(([k, p]) => `
+    <button class="palette ${cur === k ? 'on' : ''} ${p.until ? 'limited' : ''}" data-act="palette" data-v="${k}" aria-label="Farbschema ${p.name}${p.until ? ` (nur ${p.badge})` : ''}">${p.badge ? `<b class="pal-badge">${p.badge}</b>` : ''}
       <span class="pal-swatch" style="background:linear-gradient(135deg, ${p[d ? 'dark' : 'light'][0]}, ${p[d ? 'dark' : 'light'][1]} 55%, ${p[d ? 'dark' : 'light'][2]})"><i style="background:${p.accent[d]}"></i></span>
       <span>${p.name}</span></button>`).join('')}
     <label class="palette ${cur === 'custom' ? 'on' : ''}" aria-label="Eigene Farbe">
@@ -4317,7 +4325,7 @@ let lastDay = today();
 let lastGreeting = greeting();
 setInterval(() => {
   // Tageswechsel oder neue Tageszeit (Guten Morgen / Tag / Abend) → neu zeichnen
-  if (today() !== lastDay || greeting() !== lastGreeting) { lastDay = today(); lastGreeting = greeting(); render(); }
+  if (today() !== lastDay || greeting() !== lastGreeting) { lastDay = today(); lastGreeting = greeting(); applyPalette(); render(); }
 }, 60000);
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) { beat(true); render(); checkLocalReminders(); } else beat(false);
