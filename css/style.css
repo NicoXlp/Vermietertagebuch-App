@@ -1724,7 +1724,7 @@ html.typing-sheet .sheet-wrap .sheet {
 /* ─── Winterzeit: süße kleine Weihnachtsmütze auf jedem Profilbild (html.xmas – nur bis einschließlich 26.12.2026) ─── */
 html.xmas .av::before {
   content: ""; position: absolute; z-index: 2; pointer-events: none;
-  width: 78%; height: 68%; left: 30%; top: -36%;
+  width: 72%; height: 62%; left: 36%; top: -52%;
   background: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 56"%3E %3Cpath d="M7 44C12 24 26 9 47 7c5-.4 8 2 9 6-7 2-11 10-11 31z" fill="%23e23b45"/%3E %3Cpath d="M30 15c7-6 14-8 21-7-5 4-8 13-8 36H33c0-12-1-22-3-29z" fill="%23c42a37"/%3E %3Crect x="3" y="39" width="50" height="14" rx="7" fill="%23fff"/%3E %3Crect x="3" y="39" width="50" height="5" rx="2.5" fill="%23fff" opacity=".9"/%3E %3Cpath d="M6 48h44" stroke="%23e7ebf2" stroke-width="3" stroke-linecap="round"/%3E %3Ccircle cx="56" cy="12" r="7.5" fill="%23fff"/%3E %3Ccircle cx="54" cy="10" r="2.6" fill="%23f4f6fa"/%3E %3C/svg%3E') center / contain no-repeat;
   transform: rotate(16deg); transform-origin: 30% 90%;
   filter: drop-shadow(0 1px 1px rgba(0,0,0,.18));
