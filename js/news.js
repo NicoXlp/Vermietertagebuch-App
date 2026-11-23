@@ -11,7 +11,7 @@ export const NEWS = [
     items: [
       { icon: '💬', title: 'Kommentare antworten & reagieren', text: 'Auf Kommentare kannst du jetzt direkt antworten, sie mit ❤️ liken oder mit einem Emoji darauf reagieren.', act: 'tab', v: 'board', btn: 'Zum Social Hub' },
       { icon: '🎄', title: 'Farbschema „Weihnachten“', text: 'Festliches Farbschema in Weihnachtsrot, Tannengrün und warmem Gold, nur bis zum 26. Dezember. 💡 Tipp: Am schönsten wirkt es, wenn die App auf „Dunkel“ eingestellt ist.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
-      { icon: '❄️', title: 'Es schneit', text: 'Auf der Startseite rieselt jetzt bis zum 26. Dezember leise Schnee.' },
+      { icon: '❄️', title: 'Es schneit', text: 'In der ganzen App rieselt jetzt bis zum 26. Dezember leise Schnee.' },
       { icon: '🎅', title: 'Weihnachtsmützen', text: 'Passend zum Winter trägt jedes Profilbild bis zum 26. Dezember eine kleine Weihnachtsmütze.', act: 'tab', v: 'house', btn: 'Mitbewohner:innen ansehen' },
       { icon: '🌴', title: 'Farbschema „GTA VI“', text: 'Zum Release von GTA VI gibt es exklusiv ein Farbschema in Pink und Lila mit einem dezenten Hauch Orange. Es ist nur bis zum 12. Dezember dabei und verschwindet danach wieder. 💡 Tipp: Am schönsten wirkt es, wenn die App auf „Dunkel“ eingestellt ist.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
     ],

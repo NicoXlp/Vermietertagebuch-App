@@ -4045,7 +4045,7 @@ const syncSeason = () => document.documentElement.classList.toggle('xmas', today
    neu berechnet werden müsste. Läuft nur auf der Startseite und nur, solange die App sichtbar ist. */
 const snow = { cv: null, ctx: null, flakes: [], raf: 0, last: 0, w: 0, h: 0, dpr: 1 };
 function snowWanted() {
-  return state.ready && state.tab === 'home' && today() < XMAS_UNTIL && !document.hidden
+  return state.ready && today() < XMAS_UNTIL && !document.hidden
     && !matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 function snowResize() {
@@ -4054,16 +4054,16 @@ function snowResize() {
   snow.w = window.innerWidth; snow.h = window.innerHeight;
   snow.cv.width = Math.round(snow.w * snow.dpr); snow.cv.height = Math.round(snow.h * snow.dpr);
   snow.ctx.setTransform(snow.dpr, 0, 0, snow.dpr, 0, 0);
-  // Dichte an die Fläche anpassen: Handy ≈ 35, großer Bildschirm höchstens 70 Flocken
-  const n = Math.max(24, Math.min(70, Math.round(snow.w * snow.h / 11000)));
+  // Dichte an die Fläche anpassen: Handy ≈ 70, großer Bildschirm höchstens 140 Flocken
+  const n = Math.max(50, Math.min(140, Math.round(snow.w * snow.h / 5500)));
   while (snow.flakes.length < n) snow.flakes.push(newFlake(true));
   snow.flakes.length = n;
 }
 function newFlake(anywhere) {
-  const r = .9 + Math.random() * 1.8; // 0,9–2,7 px: klein und zart
+  const r = 1 + Math.random() * 2; // 1–3 px: klein und zart
   return { x: Math.random() * (snow.w || 400), y: anywhere ? Math.random() * (snow.h || 800) : -6,
     r, vy: 14 + r * 9 + Math.random() * 8, // langsam: 20–50 px pro Sekunde
-    sway: 8 + Math.random() * 16, phase: Math.random() * 6.28, a: .22 + Math.random() * .3 }; // sehr durchsichtig
+    sway: 8 + Math.random() * 16, phase: Math.random() * 6.28, a: .28 + Math.random() * .34 }; // durchsichtig
 }
 function snowFrame(t) {
   snow.raf = requestAnimationFrame(snowFrame);
