@@ -1695,3 +1695,14 @@ html.typing-sheet .sheet-wrap .sheet {
   background: linear-gradient(var(--glass-bg-strong), var(--glass-bg-strong)), var(--bg);
 }
 }
+
+/* iPad/iPhone (Safari): Farbflecken im Hintergrund als weiche Verläufe statt riesiger Weichzeichner.
+   Safari zerlegt die großen weichgezeichneten Flächen auf dem iPad sonst in eckige Blöcke
+   mit harten Kanten. Verläufe sehen gleich aus, sind aber immer weich. PCs bleiben unverändert. */
+@supports (-webkit-touch-callout: none) {
+  .blob { filter: none; opacity: .8; border-radius: 0; transform: scale(1.35); }
+  .b1 { background: radial-gradient(closest-side, var(--blob-1) 30%, transparent); }
+  .b2 { background: radial-gradient(closest-side, var(--blob-2) 30%, transparent); }
+  .b3 { background: radial-gradient(closest-side, var(--blob-3) 30%, transparent); }
+  .b4 { background: radial-gradient(closest-side, var(--blob-4) 30%, transparent); }
+}
