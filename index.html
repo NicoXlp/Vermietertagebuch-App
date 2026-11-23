@@ -19,7 +19,7 @@
   </script>
   <link rel="icon" href="icons/icon.svg?v=3" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=3">
-  <link rel="stylesheet" href="css/style.css?v=116">
+  <link rel="stylesheet" href="css/style.css?v=117">
 </head>
 <body>
   <!-- Startanimation: Kalender-Tagebuch (steht direkt im HTML, damit sie sofort erscheint) -->
@@ -57,6 +57,47 @@
       } catch (e) { /* Standardfarben */ }
     })();
   </script>
+  <script>
+    // Schneefall (bis 26.12.): einmal vorgezeichnete Schneeebenen, die nur verschoben werden.
+    // Das übernimmt der Grafikchip – flüssig auch auf dem iPhone, schon während der Startanimation.
+    window.vtSnow = function () {
+      var el = document.getElementById('snow'); if (el) return el;
+      var W = 420, T = 520, dpr = Math.min(2, window.devicePixelRatio || 1);
+      // Ebenen: fern (klein, blass, langsam) · mitte · nah (größer, schneller)
+      var L = [[20, .9, 1.6, .22, .4, 24, 10], [14, 1.4, 2.3, .3, .5, 36, 16], [9, 2, 3, .38, .6, 52, 24]];
+      function tile(seed, n, r0, r1, a0, a1, col) {
+        var c = document.createElement('canvas'); c.width = W * dpr; c.height = T * dpr;
+        var x = c.getContext('2d'); x.scale(dpr, dpr); x.fillStyle = col;
+        var s = seed; function rnd() { s = (s * 16807) % 2147483647; return s / 2147483647; }
+        for (var i = 0; i < n; i++) {
+          var px = rnd() * W, py = rnd() * T, r = r0 + rnd() * (r1 - r0); x.globalAlpha = a0 + rnd() * (a1 - a0);
+          // am Rand doppelt zeichnen, damit die Kachel nahtlos wiederholt
+          for (var dx = -W; dx <= W; dx += W) for (var dy = -T; dy <= T; dy += T) {
+            if (Math.abs(dx) && (px + dx < -4 || px + dx > W + 4)) continue;
+            if (Math.abs(dy) && (py + dy < -4 || py + dy > T + 4)) continue;
+            x.beginPath(); x.arc(px + dx, py + dy, r, 0, 6.2832); x.fill();
+          }
+        }
+        return 'url(' + c.toDataURL('image/png') + ')';
+      }
+      el = document.createElement('div'); el.id = 'snow'; el.setAttribute('aria-hidden', 'true');
+      L.forEach(function (l, i) {
+        var sway = document.createElement('div'); sway.className = 'sn-sway';
+        sway.style.animationDuration = (5 + i * 1.7) + 's'; sway.style.setProperty('--sw', l[6] + 'px');
+        var f = document.createElement('div'); f.className = 'sn';
+        f.style.setProperty('--d', tile(7 + i * 31, l[0], l[1], l[2], l[3], l[4], '#ffffff'));
+        f.style.setProperty('--l', tile(7 + i * 31, l[0], l[1], l[2], l[3] + .1, l[4] + .15, '#9fb3d6'));
+        f.style.setProperty('--t', T + 'px'); f.style.backgroundSize = W + 'px ' + T + 'px';
+        f.style.animationDuration = (T / l[5]) + 's';
+        sway.appendChild(f); el.appendChild(sway);
+      });
+      document.body.appendChild(el); return el;
+    };
+    try {
+      var n = new Date(), k = n.getFullYear() * 1e4 + (n.getMonth() + 1) * 100 + n.getDate();
+      if (k < 20261227 && !matchMedia('(prefers-reduced-motion: reduce)').matches) window.vtSnow();
+    } catch (e) { /* kein Schnee */ }
+  </script>
   <!-- Farbiger, sanft bewegter Hintergrund – damit das Glas etwas zum Brechen hat -->
   <div class="backdrop" aria-hidden="true">
     <span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="blob b4"></span>
@@ -83,6 +124,6 @@
 
   <div id="toasts" aria-live="polite"></div>
 
-  <script type="module" src="js/app.js?v=116"></script>
+  <script type="module" src="js/app.js?v=117"></script>
 </body>
 </html>
