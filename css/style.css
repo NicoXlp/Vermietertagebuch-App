@@ -1735,6 +1735,15 @@ html.xmas .av-stack .av::before { display: none; } /* in kleinen Stapeln (z. B. 
 #snow { position: fixed; inset: 0; z-index: 40; pointer-events: none; overflow: hidden; contain: strict; } /* unter Navigationsleiste (50) und Fenstern (100) */
 #snow[hidden] { display: none; }
 html.splashing #snow { z-index: 1001; } /* während der Startanimation darüber – dasselbe Element, daher kein Sprung danach */
+/* Flüssig überall: Schnee endet sanft über der Navigationsleiste. Glas über bewegtem Inhalt müsste sonst
+   jedes Bild neu weichzeichnen – genau das bremst iPhone und iPad. */
+#snow { bottom: calc(max(14px, calc(var(--safe-b) + 4px)) + 64px);
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 90px), transparent); mask-image: linear-gradient(#000 calc(100% - 90px), transparent);
+  transition: opacity .3s ease; }
+/* Geöffnetes Fenster: Schnee blendet aus und pausiert – sonst würde das große Glasfenster dauernd neu berechnet */
+html.sheet-open #snow { opacity: 0; }
+html.sheet-open #snow .sn, html.sheet-open #snow .sn-sway { animation-play-state: paused; }
+html.splashing #snow { bottom: 0; right: 0; -webkit-mask-image: none; mask-image: none; opacity: 1; }
 #snow .sn-sway { position: absolute; inset: 0; animation: snSway 6s ease-in-out infinite alternate; will-change: transform; }
 #snow .sn {
   position: absolute; left: -40px; right: -40px; top: calc(-1 * var(--t)); bottom: 0;
@@ -1772,7 +1781,10 @@ html.xmas .profile-photo .av::before { display: none; }
   /* Platz für die Leiste rechts – Inhalt bleibt sonst mittig */
   html:not(.phone-ua) #app { padding-right: calc(76px + max(14px, calc(env(safe-area-inset-right, 0px) + 8px)) + 12px); }
   html:not(.phone-ua) .view { padding-bottom: calc(var(--safe-b) + 28px); }
-  html:not(.phone-ua) #snow { right: 0; }
+  /* senkrechte Leiste rechts: Schnee endet sanft davor, unten bis zum Rand */
+  html:not(.phone-ua) #snow { bottom: 0; right: calc(76px + max(14px, calc(env(safe-area-inset-right, 0px) + 8px)) + 4px);
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 90px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 90px), transparent); }
+  html.splashing:not(.phone-ua) #snow { right: 0; -webkit-mask-image: none; mask-image: none; }
 }
 
 /* Kommentare: Antworten, Gefällt mir, Reaktionen */
