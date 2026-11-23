@@ -553,6 +553,27 @@ function syncViewportDiag() {
   if (!allowed && shown) { document.getElementById('vpdiag').remove(); clearInterval(diagTimer); }
 }
 window.visualViewport?.addEventListener('resize', () => { if (!typing()) settleViewport(); });
+/* Handy: Tippt man in einem Fenster (z. B. Kommentare), schiebt das iPhone sonst die ganze Ansicht
+   nach oben und das Fenster landet ganz oben. Stattdessen: Fenster genau über der Tastatur halten –
+   es rückt nur so weit hoch wie nötig. (Privatchat füllt ohnehin die ganze Höhe und bleibt, wie er ist.) */
+function anchorSheetToKeyboard() {
+  const vv = window.visualViewport;
+  const wrap = document.activeElement?.closest?.('.sheet-wrap:not(.dm-sheet)');
+  document.querySelectorAll('.sheet-wrap.kb-anchored').forEach((w) => {
+    if (w !== wrap) { w.classList.remove('kb-anchored'); w.style.removeProperty('--kb-top'); w.style.removeProperty('--kb-h'); }
+  });
+  if (!vv || !wrap || !typing() || !matchMedia('(max-width: 699px) and (hover: none)').matches) return;
+  const open = window.innerHeight - vv.height > 120; // Tastatur sichtbar
+  if (!open) { wrap.classList.remove('kb-anchored'); return; }
+  wrap.style.setProperty('--kb-top', `${Math.round(vv.offsetTop)}px`);
+  wrap.style.setProperty('--kb-h', `${Math.round(vv.height)}px`);
+  wrap.classList.add('kb-anchored');
+}
+const anchorSoon = () => { anchorSheetToKeyboard(); setTimeout(anchorSheetToKeyboard, 120); setTimeout(anchorSheetToKeyboard, 400); };
+window.visualViewport?.addEventListener('resize', anchorSoon);
+window.visualViewport?.addEventListener('scroll', anchorSheetToKeyboard);
+document.addEventListener('focusin', anchorSoon);
+document.addEventListener('focusout', () => setTimeout(anchorSheetToKeyboard, 60));
 // Während ein Fenster offen ist, darf die Seite dahinter nicht wegrutschen (iOS verschiebt sie beim Tippen)
 window.addEventListener('scroll', () => { if (scrollLocked && !typing() && Math.abs(window.scrollY - lockY) > 1) settleViewport(); }, { passive: true });
 document.addEventListener('touchmove', (e) => {
@@ -1571,6 +1592,15 @@ function eventBody(p) {
 /* ─── „Neues“: Ankündigungen auf der Startseite ──────────────────────────────
    Neuen Eintrag oben einfügen → die Kachel zeigt immer den neuesten. */
 const NEWS = [
+  {
+    id: '2026-11-23-fixes-6',
+    date: '2026-11-23',
+    label: '🛠️ Bug-Fixes',
+    items: [
+      { icon: '⌨️', title: 'Fenster beim Tippen', text: 'Beim Kommentieren rutscht das Fenster auf dem iPhone nicht mehr ganz nach oben – es bleibt direkt über der Tastatur.' },
+      { icon: '💬', title: 'Kommentare linksbündig', text: 'Der neueste Kommentar unter einem Beitrag steht wieder links statt mittig.' },
+    ],
+  },
   {
     id: '2026-11-15-fixes-5',
     date: '2026-11-15',
