@@ -1907,3 +1907,14 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
   .stk-shapes .chip .e { font-size: 17px; }
 }
 @media (max-height: 700px) { .stk-stage { width: min(100%, 340px, 31dvh); } }
+
+/* ─── Müll: Reiter „Erledigt“ ─── */
+.seg + .seg { margin-top: 10px; }
+.bin-stats { padding: 14px 16px; margin-top: 14px; }
+.bin-stats-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.bin-tally { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.bin-tally-item { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px; border-radius: 999px; background: var(--fill); font-size: 14px; font-weight: 600; }
+.bin-tally-item b { color: var(--accent); }
+.bin-done-item .main { min-width: 0; }
+.list-item .sub.bin-done-by { display: block; color: var(--text-2); }
+.bin-done-by b { color: var(--text); font-weight: 600; }
