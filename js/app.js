@@ -174,6 +174,7 @@ const state = {
   taskPerson: 'all',
   feedFilter: 'all',
   binScope: LS.get('binScope', 'mine'),
+  binView: LS.get('binView', 'next'),
   calMonth: null,
   presence: [],
 };
@@ -1210,10 +1211,42 @@ async function toggleBinDone(id, date) {
   mutate('trash', id, (b) => {
     const done = { ...(b.done || {}) };
     if (done[date]) delete done[date]; else done[date] = { by: state.me, at: Date.now() };
-    const cutoff = addDays(today(), -60);
+    const cutoff = addDays(today(), -400);
     Object.keys(done).forEach((d) => { if (d < cutoff) delete done[d]; });
     return { ...b, done };
   });
+}
+/** Reiter „Erledigt“: alle bereits rausgestellten Tonnen – neueste zuerst, nach Monaten gruppiert */
+function binDoneHistory(scope) {
+  const items = [];
+  for (const bin of state.trash) {
+    if (scope === 'mine' && !binAppliesTo(bin, state.me)) continue;
+    for (const date of Object.keys(bin.done || {})) { const d = doneInfo(bin, date); if (d) items.push({ bin, date, d }); }
+  }
+  items.sort((a, b) => b.date.localeCompare(a.date) || (b.d.at || 0) - (a.d.at || 0) || a.bin.name.localeCompare(b.bin.name));
+  if (!items.length) return '<div class="card empty"><div class="big">✅</div><h3>Noch nichts erledigt</h3><p class="muted">Sobald jemand eine Tonne als „Rausgestellt“ bestätigt, erscheint sie hier.</p></div>';
+  // Wer hat wie oft rausgestellt?
+  const tally = {};
+  items.forEach((x) => { tally[x.d.by] = (tally[x.d.by] || 0) + 1; });
+  const top = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+  const stats = `<div class="card bin-stats">
+      <div class="bin-stats-head"><b>${plural(items.length, 'Tonne', 'Tonnen')} rausgestellt</b><span class="small muted">Wer hat's gemacht?</span></div>
+      <div class="bin-tally">${top.map(([id, n]) => `<span class="bin-tally-item">${avatar(id, 28)}<span>${esc(id === state.me ? 'Du' : nameOf(id))}</span><b>${n}×</b></span>`).join('')}</div>
+    </div>`;
+  const months = {};
+  items.forEach((x) => (months[x.date.slice(0, 7)] ||= []).push(x));
+  const monthName = (ym) => new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(parseISO(ym + '-01'));
+  return stats + Object.entries(months).map(([ym, xs]) => `
+    <div class="group-label">${esc(monthName(ym))}</div>
+    <div class="list card tight">${xs.map(({ bin, date, d }) => `
+      <div class="list-item bin-done-item">
+        ${binIcon(bin)}
+        <div class="main"><div class="title">${esc(bin.name)}</div>
+          <div class="sub">Abholung ${esc(fmt(date, { weekday: 'short', day: 'numeric', month: 'short' }))}</div>
+          <div class="sub bin-done-by">✓ Rausgestellt von <b>${d.by === state.me ? 'dir' : esc(nameOf(d.by))}</b>${d.at ? ` · ${esc(fmt(iso(new Date(d.at)), { weekday: 'short', day: 'numeric', month: 'short' }))}, ${clock(d.at)} Uhr` : ''}</div></div>
+        ${avatar(d.by, 32)}
+      </div>`).join('')}</div>`).join('')
+    + '<p class="small muted center" style="margin:14px 8px 0">Bestätigungen werden etwa ein Jahr lang aufbewahrt.</p>';
 }
 const binIcon = (bin, lg) => `<span class="bin-icon ${lg ? 'lg' : ''}" style="--c:${esc(binColorFor(bin))}">${I.trash}</span>`;
 /** „Wer ist zuständig?“ – feste Person oder alle, für die die Tonne gilt */
@@ -1870,7 +1903,14 @@ const VIEWS = {
     }
     const monthName = new Intl.DateTimeFormat('de-DE', { month: 'long', year: 'numeric' }).format(first);
 
+    if (state.trash.length && state.binView === 'done') {
+      return `${header('Abholplan', 'Müllabfuhr')}
+        ${segmented([['next', 'Anstehend'], ['done', 'Erledigt']], 'done', 'bin-view')}
+        ${segmented([['mine', 'Für mich'], ['all', 'Ganzes Haus']], scope, 'bin-scope')}
+        ${binDoneHistory(scope)}`;
+    }
     return `${header('Abholplan', 'Müllabfuhr')}
+      ${state.trash.length ? segmented([['next', 'Anstehend'], ['done', 'Erledigt']], 'next', 'bin-view') : ''}
       ${state.trash.length ? segmented([['mine', 'Für mich'], ['all', 'Ganzes Haus']], scope, 'bin-scope') : ''}
       ${notifyCard()}
       ${state.trash.length ? '' : `<div class="card empty"><div class="big">🗑️</div><h3>Noch keine Tonnen</h3><p class="muted" style="margin-bottom:14px">Lade den Abfallkalender eurer Stadt hoch (.ics) oder lege eure Tonnen von Hand an.</p>
@@ -4266,6 +4306,7 @@ const ACTIONS = {
   },
   'bin-done': (d) => toggleBinDone(d.id, d.date),
   'bin-scope': (d) => { state.binScope = d.v; LS.set('binScope', d.v); renderNow(false); },
+  'bin-view': (d) => { state.binView = d.v; LS.set('binView', d.v); renderNow(false); },
   notify: () => notifySheet(),
   'bin-new': () => binSheet(),
   'bin-edit': (d) => binSheet(d.id),

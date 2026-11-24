@@ -5,6 +5,14 @@
 // Bitte keine Browser-APIs hier verwenden.
 export const NEWS = [
   {
+    id: '2026-11-24-neu',
+    date: '2026-11-24',
+    label: '✨ Neue Funktionen',
+    items: [
+      { icon: '✅', title: 'Erledigte Tonnen im Überblick', text: 'Unter Müll gibt es jetzt den Reiter „Erledigt“. Dort siehst du alle Tonnen, die bereits rausgestellt wurden: wann, von wem und wer es insgesamt wie oft gemacht hat.', act: 'tab', v: 'trash', btn: 'Zum Abholplan' },
+    ],
+  },
+  {
     id: '2026-11-23-pin',
     date: '2026-11-23',
     label: '❗ Wichtiges',
