@@ -24,10 +24,11 @@ export const NEWS = [
     ],
   },
   {
-    id: '2026-11-25-fixes-3',
+    id: '2026-11-25-fixes-sticker',
     date: '2026-11-25',
     label: '🛠️ Bug-Fixes',
     items: [
+      { icon: '🧩', title: 'Sticker-Sammlung aufgeräumt', text: 'Deine Sticker reihen sich jetzt lückenlos aneinander, jeder in seinem eigenen Format. Es entstehen keine großen Abstände oder unterschiedlich gestreckten Kacheln mehr.' },
       { icon: '💬', title: 'Privatchats öffnen ganz unten', text: 'Beim Öffnen eines Privatchats siehst du jetzt immer sofort die neueste Nachricht. Vorher landete die Ansicht manchmal mittendrin, weil Sticker und Bilder erst etwas später geladen wurden.' },
       { icon: '🗑️', title: 'Kein versehentliches Abhaken', text: 'Auf der Startseite lassen sich Tonnen nicht mehr als rausgestellt markieren, weil man den Knopf zu leicht versehentlich getroffen hat. Abhaken geht jetzt im Bereich Müll.', act: 'tab', v: 'trash', btn: 'Zum Abholplan' },
       { icon: '✅', title: 'Aufgaben auf der Startseite', text: 'Auch Aufgaben lassen sich auf der Startseite nicht mehr abhaken, weil das oft versehentlich passiert ist. Abhaken geht jetzt im Bereich Aufgaben.', act: 'tab', v: 'tasks', btn: 'Zu den Aufgaben' },
