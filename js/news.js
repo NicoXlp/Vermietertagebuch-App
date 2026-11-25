@@ -10,6 +10,7 @@ export const NEWS = [
     label: '❗ Wichtiges',
     items: [
       { icon: '🎤', title: 'Mikrofon auf iPhone & iPad dauerhaft erlauben', text: 'Damit du beim Aufnehmen von Sprachnachrichten nicht nach jedem App-Start erneut nach dem Mikrofon gefragt wirst, stell es auf deinem iPhone oder iPad in den Einstellungen auf „Erlauben“: Einstellungen › Apps › Safari › Einstellungen für Websites › Mikrofon › Erlauben. Bei älteren iOS- und iPadOS-Versionen findest du Safari direkt in der Liste der Einstellungen.' },
+      { icon: '🔒', title: 'Schütze dein Profil mit einer PIN', text: 'Ab sofort kannst du dein Profil mit einer persönlichen PIN aus 4 bis 8 Ziffern schützen, die du dir selbst aussuchst. Dann kann niemand mehr versehentlich in dein Profil wechseln. Du findest die Einstellung unter „Profil wechseln“. Die Einstellung ist freiwillig, aber sie schützt deine Privatsphäre, zum Beispiel deine Privatchats.', act: 'switch-user', btn: 'PIN festlegen' },
     ],
   },
   {
@@ -53,14 +54,6 @@ export const NEWS = [
       { icon: '❄️', title: 'Es schneit', text: 'In der ganzen App rieselt jetzt bis zum 26. Dezember leise Schnee.' },
       { icon: '🎅', title: 'Weihnachtsmützen', text: 'Passend zum Winter trägt jedes Profilbild bis zum 26. Dezember eine kleine Weihnachtsmütze.', act: 'tab', v: 'house', btn: 'Mitbewohner:innen ansehen' },
       { icon: '🌴', title: 'Farbschema „GTA VI“', text: 'Zum Release von GTA VI gibt es exklusiv ein Farbschema in Pink und Lila mit einem dezenten Hauch Orange. Es ist nur bis zum 12. Dezember dabei und verschwindet danach wieder. 💡 Tipp: Am schönsten wirkt es, wenn die App auf „Dunkel“ eingestellt ist.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
-    ],
-  },
-  {
-    id: '2026-11-23-pin',
-    date: '2026-11-23',
-    label: '❗ Wichtiges',
-    items: [
-      { icon: '🔒', title: 'Schütze dein Profil mit einer PIN', text: 'Ab sofort kannst du dein Profil mit einer persönlichen PIN aus 4 bis 8 Ziffern schützen, die du dir selbst aussuchst. Dann kann niemand mehr versehentlich in dein Profil wechseln. Du findest die Einstellung unter „Profil wechseln“. Die Einstellung ist freiwillig, aber sie schützt deine Privatsphäre, zum Beispiel deine Privatchats.', act: 'switch-user', btn: 'PIN festlegen' },
     ],
   },
   {
