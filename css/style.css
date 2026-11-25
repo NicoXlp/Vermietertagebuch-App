@@ -1859,7 +1859,7 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 .dm-pin.on { color: var(--accent); }
 .dm-pin.on svg { fill: currentColor; transform: rotate(0deg); }
 .dm-pin:active svg { transform: scale(.85); }
-.dm-row.pinned { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.dm-row.pinned { background: color-mix(in srgb, var(--accent) 7%, transparent); border-radius: calc(var(--r-lg) - 6px); } /* rund wie die Kachel, nur innen */
 
 /* ─── Profil-PIN ─── */
 .news-badge.important, .news-badge.old.important { background: #ff9f0a; color: #1a1000; }
