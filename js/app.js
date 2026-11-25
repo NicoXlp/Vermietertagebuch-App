@@ -2591,45 +2591,71 @@ function placeCaretEnd(el) {
 const MP_VER = '0.10.21';
 const MP_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}`;
 const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite';
-let segmenterP = null;
-function getSegmenter() {
-  segmenterP ||= (async () => {
+let segVisionP = null; const segByDelegate = {};
+let segmenterP = null; // „schon einmal geladen?“ (für den Hinweis beim ersten Mal)
+function loadVision() {
+  segVisionP ||= (async () => {
     const vision = await import(`${MP_BASE}/vision_bundle.mjs`);
     const files = await vision.FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
-    const make = (delegate) => vision.InteractiveSegmenter.createFromOptions(files, {
+    return { vision, files };
+  })().catch((e) => { segVisionP = null; throw e; });
+  return segVisionP;
+}
+/** Segmentierer mit CPU (Standard – läuft auf allen Geräten gleich) oder GPU (Ersatzweg) */
+function getSegmenter(delegate = 'CPU') {
+  segByDelegate[delegate] ||= (async () => {
+    const { vision, files } = await loadVision();
+    return vision.InteractiveSegmenter.createFromOptions(files, {
       baseOptions: { modelAssetPath: MP_MODEL, delegate }, outputCategoryMask: false, outputConfidenceMasks: true,
     });
-    try { return await make('GPU'); } catch { return await make('CPU'); }
-  })().catch((e) => { segmenterP = null; throw e; });
-  return segmenterP;
+  })().catch((e) => { delete segByDelegate[delegate]; throw e; });
+  segmenterP = segByDelegate[delegate];
+  return segByDelegate[delegate];
 }
-/** Motiv an Stelle (nx, ny) (0…1) erkennen → Maske (Canvas in Bildgröße, Alpha = Motiv) + Begrenzung */
-async function segmentAt(imgCanvas, nx, ny) {
-  const seg = await getSegmenter();
-  const res = seg.segment(imgCanvas, { keypoint: { x: nx, y: ny } });
+/** Erkennung mit einem bestimmten Weg; liefert Maske (Canvas in Größe von `small`) + Begrenzung oder null */
+async function segmentWith(delegate, small, nx, ny) {
+  const seg = await getSegmenter(delegate);
+  const res = seg.segment(small, { keypoint: { x: nx, y: ny } });
   try {
-    const m = res.confidenceMasks?.[0];
+    const m = res?.confidenceMasks?.[0];
     if (!m) return null;
     const w = m.width, h = m.height, conf = m.getAsFloat32Array();
+    if (!conf?.length) return null;
     const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
     const mx = mc.getContext('2d'), id = mx.createImageData(w, h);
-    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    let x0 = w, y0 = h, x1 = -1, y1 = -1, n = 0;
     for (let i = 0; i < conf.length; i++) {
       const a = Math.max(0, Math.min(1, (conf[i] - 0.35) / 0.3)); // weiche Kante
       id.data[i * 4 + 3] = Math.round(a * 255);
-      if (a > 0.5) { const x = i % w, y = (i / w) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      if (a > 0.5) { n++; const x = i % w, y = (i / w) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
     }
-    if (x1 < 0) return null;
+    // nichts oder (fast) alles erkannt → als Fehlversuch werten (typisch für einen hakenden Grafik-Weg)
+    if (x1 < 0 || n < conf.length * 0.002 || n >= conf.length * 0.999) return null;
     mx.putImageData(id, 0, 0);
-    // Maske auf Bildgröße bringen (falls das Modell eine andere Auflösung liefert)
-    const sx = imgCanvas.width / w, sy = imgCanvas.height / h;
-    let mask = mc;
-    if (w !== imgCanvas.width || h !== imgCanvas.height) {
-      mask = document.createElement('canvas'); mask.width = imgCanvas.width; mask.height = imgCanvas.height;
-      mask.getContext('2d').drawImage(mc, 0, 0, mask.width, mask.height);
-    }
-    return { mask, box: { x: x0 * sx, y: y0 * sy, w: (x1 - x0 + 1) * sx, h: (y1 - y0 + 1) * sy } };
-  } finally { res.close?.(); }
+    return { mc, w, h, box: { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 } };
+  } finally { res?.close?.(); }
+}
+/** Motiv an Stelle (nx, ny) (0…1) erkennen → Maske (Canvas in Bildgröße, Alpha = Motiv) + Begrenzung */
+async function segmentAt(imgCanvas, nx, ny) {
+  // für die Erkennung verkleinern (schneller, weniger Speicher – wichtig auf Handys)
+  const f = Math.min(1, 1024 / Math.max(imgCanvas.width, imgCanvas.height));
+  let small = imgCanvas;
+  if (f < 1) {
+    small = document.createElement('canvas'); small.width = Math.round(imgCanvas.width * f); small.height = Math.round(imgCanvas.height * f);
+    small.getContext('2d').drawImage(imgCanvas, 0, 0, small.width, small.height);
+  }
+  let r = null, lastErr = null;
+  for (const delegate of ['CPU', 'GPU']) {
+    try { r = await segmentWith(delegate, small, nx, ny); } catch (e) { lastErr = e; console.error('Erkennung', delegate, e); r = null; }
+    if (r) break;
+  }
+  if (!r) { if (lastErr) throw lastErr; return null; }
+  // Maske auf volle Bildgröße bringen
+  const mask = document.createElement('canvas'); mask.width = imgCanvas.width; mask.height = imgCanvas.height;
+  const mctx = mask.getContext('2d'); mctx.imageSmoothingQuality = 'high';
+  mctx.drawImage(r.mc, 0, 0, mask.width, mask.height);
+  const sx = imgCanvas.width / r.w, sy = imgCanvas.height / r.h;
+  return { mask, box: { x: r.box.x * sx, y: r.box.y * sy, w: r.box.w * sx, h: r.box.h * sy } };
 }
 
 /** Zuschneiden: Form wählen (Kreis, Quadrat, Herz) oder frei mit dem Finger ausschneiden */
@@ -2805,7 +2831,8 @@ async function stickerEditor(file) {
           else { st.cut = cut; haptic(12); }
         } catch (err) {
           console.error(err);
-          toast(navigator.onLine === false ? 'Für das erste Mal braucht die Erkennung Internet 📶' : 'Automatisch ausschneiden hat nicht geklappt – versuch „Frei“ ✂️', 4500);
+          const why = String(err?.message || err || '').replace(/\s+/g, ' ').slice(0, 80);
+          toast(navigator.onLine === false ? 'Für das erste Mal braucht die Erkennung Internet 📶' : `Automatisch ausschneiden hat nicht geklappt – versuch „Frei“ ✂️${why ? ` (${why})` : ''}`, 6000);
         } finally { st.busy = false; st.loadMsg = ''; if (!api.closed) paint(); }
       };
       const up = (e) => {
