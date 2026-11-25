@@ -675,6 +675,8 @@ document.addEventListener('focusout', (e) => {
 });
 document.addEventListener('touchmove', (e) => {
   if (!scrollLocked) return;
+  // Schieberegler (z. B. Zoom beim Sticker) und Flächen mit eigener Gestensteuerung nicht blockieren
+  if (e.target?.closest?.('input[type=range]')) return;
   // Nächsten Bereich suchen, der wirklich scrollen kann – egal wo der Finger aufsetzt
   // (z. B. auf der Emoji-Auswahl oder den Farbpunkten im Profil). Nur wenn es keinen gibt: blockieren.
   for (let el = e.target; el && el !== document.body; el = el.parentElement) {
@@ -2594,7 +2596,9 @@ async function stickerEditor(file) {
       const geo = () => {
         // „Ganz“: komplettes Bild sichtbar (einpassen), sonst Fläche füllen + Zoom/Verschieben
         if (st.shape === 'full') { const m = S * 0.07, sc = Math.min((S - 2 * m) / img.width, (S - 2 * m) / img.height), dw = img.width * sc, dh = img.height * sc; return { sc, x: (S - dw) / 2, y: (S - dh) / 2, dw, dh }; }
-        const base = Math.max(S / img.width, S / img.height), sc = base * st.z, dw = img.width * sc, dh = img.height * sc;
+        // „Frei“: ganzes Foto sichtbar (nichts abgeschnitten) – sonst füllt das Foto die Fläche
+        const base = st.shape === 'free' ? Math.min(S / img.width, S / img.height) : Math.max(S / img.width, S / img.height);
+        const sc = base * st.z, dw = img.width * sc, dh = img.height * sc;
         return { sc, x: S / 2 - dw / 2 + st.ox, y: S / 2 - dh / 2 + st.oy, dw, dh }; };
       const clampPan = () => { const g = geo(); const mx = Math.max(0, (g.dw - S) / 2), my = Math.max(0, (g.dh - S) / 2); st.ox = Math.max(-mx, Math.min(mx, st.ox)); st.oy = Math.max(-my, Math.min(my, st.oy)); };
       const shapePath = (shape = st.shape) => {
@@ -2640,7 +2644,7 @@ async function stickerEditor(file) {
           : 'Ziehen zum Verschieben · mit zwei Fingern oder dem Regler zoomen';
         api.el.querySelectorAll('[data-shape]').forEach((b) => { const on = b.dataset.shape === st.shape; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
       }
-      $('.stk-shapes', api.el).addEventListener('click', (e) => { const b = e.target.closest('[data-shape]'); if (b) { st.shape = b.dataset.shape; haptic(8); paint(); } });
+      $('.stk-shapes', api.el).addEventListener('click', (e) => { const b = e.target.closest('[data-shape]'); if (b) { st.shape = b.dataset.shape; clampPan(); haptic(8); paint(); } });
       zoom.oninput = () => { st.z = +zoom.value; clampPan(); paint(); };
       $('#stk-border', api.el).onchange = (e) => { st.border = e.target.checked; };
 
@@ -2649,6 +2653,8 @@ async function stickerEditor(file) {
       const local = (e) => { const r = stage.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
       const pinch = () => { const [a, b] = [...pts.values()]; return { d: Math.hypot(a[0] - b[0], a[1] - b[1]), cx: (a[0] + b[0]) / 2, cy: (a[1] + b[1]) / 2 }; };
       stage.addEventListener('pointerdown', (e) => {
+        // Beim Ausschneiden: weitere Finger (z. B. Handballen) ignorieren – sonst zoomt das Bild plötzlich
+        if (st.shape === 'free' && st.drawing && pts.size) return;
         try { stage.setPointerCapture(e.pointerId); } catch { /* egal */ }
         pts.set(e.pointerId, local(e));
         if (pts.size === 2) { st.drawing = false; if (st.shape === 'free' && !lassoOk()) st.lasso = []; last = { ...pinch(), z: st.z }; paint(); return; }
