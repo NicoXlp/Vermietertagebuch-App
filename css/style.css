@@ -1921,3 +1921,10 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 
 /* Sticker gedrückt halten → App-Menü statt „Bild sichern“ (iPhone) */
 .dm-sticker, .c-sticker, .lc-sticker, .stk-tile img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
+
+/* Gedrückt-Halten: Hervorhebung rund wie die Kachel (statt eckiger grauer Kasten) */
+.list.card.tight .list-item, .card.tight > .list-item { border-radius: calc(var(--r-lg) - 6px); }
+.dm-row { border-radius: calc(var(--r-lg) - 6px); transition: background .15s; }
+.dm-row .list-item:active:not(:has(button:active)) { background: none; }
+.dm-row:has(.list-item:active) { background: var(--fill); }
+.dm-row.pinned:has(.list-item:active) { background: color-mix(in srgb, var(--accent) 14%, var(--fill)); }
