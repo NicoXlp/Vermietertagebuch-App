@@ -2166,7 +2166,7 @@ function dmMessagesHtml(id, ui = {}) {
     day = d;
     const kind = m.sticker ? 'bare sticker' : m.voice ? 'bare' : m.taskId || m.feedbackId ? 'rich' : m.media?.length ? 'media' : '';
     const cap = m.text ? `<div class="txt">${richText(m.text)}</div>` : '';
-    const body = m.sticker ? `<img class="dm-sticker" alt="Sticker" src="${esc(m.sticker.data)}" style="aspect-ratio:${+m.sticker.w || 1}/${+m.sticker.h || 1}">`
+    const body = m.sticker ? `<img class="dm-sticker" alt="Sticker" src="${esc(m.sticker.data)}" style="${stickerBox(m.sticker, 150)}">`
       : m.voice ? voiceBody(m)
       : m.feedbackId ? dmFeedbackCard(m)
       : m.taskId ? dmTaskCard(m) + cap
@@ -2237,6 +2237,7 @@ function chatSheet(id) {
   const ui = { sel: null, reply: null };
   let root = null; // Sheet-Element (steht schon in onMount bereit)
   let holdRec = null; // laufende Aufnahme per Gedrückthalten
+  let stick = true; // unten bleiben (beim Öffnen und solange man nicht selbst hochscrollt)
   const api = openSheet({
     title: dn(id),
     onClose: () => holdRec?.cancel(),
@@ -2263,6 +2264,12 @@ function chatSheet(id) {
       api.el.classList.add('dm-sheet');
       const f = $('#dmf', api.el), ta = $('#dmt', api.el), list = $('#dmlist', api.el);
       ensureStickerSub();
+      // Nachgeladene Bilder, Sticker & Videos machen den Chat höher → dann wieder ganz nach unten
+      const toBottom = () => { if (stick && !ui.sel) list.scrollTop = list.scrollHeight; };
+      list.addEventListener('scroll', () => { stick = list.scrollHeight - list.scrollTop - list.clientHeight < 60; }, { passive: true });
+      list.addEventListener('load', toBottom, true);
+      list.addEventListener('loadedmetadata', toBottom, true);
+      try { new ResizeObserver(toBottom).observe(list); } catch { /* ältere Browser */ }
       const textOf = () => (ta.innerText || '').replace(/\u00a0/g, ' ').replace(/\n$/, '');
       const sync = () => { const has = !!textOf().trim(); $('#dm-send', f).hidden = !has; $('#dm-mic', f).hidden = has; };
       // Sticker/Bilder aus der Tastatur (iPhone-Sticker, Genmoji, Gboard) oder eingefügte Bilder → als Sticker senden
@@ -2463,7 +2470,7 @@ function chatSheet(id) {
     if (!l) return;
     const html = dmMessagesHtml(id, ui);
     if (html === lastHtml) return;
-    const atBottom = !lastHtml || l.scrollHeight - l.scrollTop - l.clientHeight < 60;
+    const atBottom = !lastHtml || stick || l.scrollHeight - l.scrollTop - l.clientHeight < 60;
     lastHtml = html;
     l.innerHTML = html;
     updateVoiceUI();
@@ -3731,6 +3738,11 @@ function attachStickerInput(el, onSticker) {
   });
 }
 
+/** Feste Anzeigegröße eines Stickers (Platz ist schon vor dem Laden reserviert → Chat springt nicht) */
+function stickerBox(st, max) {
+  const w = +st?.w || 1, h = +st?.h || 1, k = max / Math.max(w, h);
+  return `width:${Math.round(w * k)}px;height:${Math.round(h * k)}px`;
+}
 /** Kommentar als kurzer Text (Sticker → „🌟 Sticker“) */
 const cText = (c) => (c?.sticker ? '🌟 Sticker' : c?.text || '');
 function commentsSheet(id) {
@@ -3757,7 +3769,7 @@ function commentsSheet(id) {
       const q = c.replyTo ? byId[c.replyTo] : null;
       const quote = c.replyTo ? `<button type="button" class="c-quote" data-cjump="${esc(c.replyTo)}">↪ ${q ? `<b>${esc(dn(q.author))}</b> ${esc(snippet(cText(q), 60))}` : 'Kommentar gelöscht'}</button>` : '';
       return `<div class="comment ${c.replyTo ? 'is-reply' : ''}" id="c-${esc(c.id)}">${avatar(c.author, 32)}<div style="min-width:0;flex:1">
-        <div class="bubble ${c.sticker ? 'stk' : ''}">${quote}<div class="who">${esc(dn(c.author))}</div>${c.sticker ? `<img class="c-sticker" alt="Sticker" src="${esc(c.sticker.data)}" style="aspect-ratio:${+c.sticker.w || 1}/${+c.sticker.h || 1}">` : `<div class="txt">${richText(c.text)}</div>`}</div>
+        <div class="bubble ${c.sticker ? 'stk' : ''}">${quote}<div class="who">${esc(dn(c.author))}</div>${c.sticker ? `<img class="c-sticker" alt="Sticker" src="${esc(c.sticker.data)}" style="${stickerBox(c.sticker, 120)}">` : `<div class="txt">${richText(c.text)}</div>`}</div>
         ${reacts.length ? `<div class="c-reacts">${reacts.map(([em, v]) => `<button type="button" class="reaction ${v.includes(state.me) ? 'mine' : ''}" data-creact="${esc(c.id)}" data-e="${esc(em)}" title="${esc(v.map(nameOf).join(', '))}"><span class="e">${esc(em)}</span>${v.length}</button>`).join('')}</div>` : ''}
         <div class="meta"><span>${relTime(c.at)}</span>
           <button type="button" class="c-like ${liked ? 'on' : ''}" data-clike="${esc(c.id)}" aria-pressed="${liked}" title="${esc(likes.map(nameOf).join(', '))}">${liked ? '❤️' : '🤍'}${likes.length ? ` ${likes.length}` : ''}</button>
