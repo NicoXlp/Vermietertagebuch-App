@@ -1949,3 +1949,7 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
   html.kb-open .dm-sheet.sheet-wrap { padding-bottom: 6px; }
   html.kb-open .dm-sheet .sheet-body { padding-bottom: 10px; }
 }
+
+/* Startseite: Aufgaben nur anzeigen (abhaken in der Aufgabe oder unter „Aufgaben“) */
+.home-task .task-dot { width: 10px; height: 10px; margin: 0 10px 0 9px; flex: none; border-radius: 50%; background: var(--accent); opacity: .75; }
+.home-task .task-dot.imp { background: #ff9f0a; opacity: 1; }

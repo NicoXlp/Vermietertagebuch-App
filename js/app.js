@@ -1151,9 +1151,10 @@ function dueInfo(t) {
   return `<span class="pill ${cls}">${I.cal}${esc(label)}</span>`;
 }
 
-function taskRow(t) {
-  return `<div class="list-item task ${t.done ? 'done' : ''}">
-    <button class="check ${t.done ? 'on' : ''}" data-act="task-toggle" data-id="${t.id}" aria-label="${t.done ? 'Wieder öffnen' : 'Erledigen'}">${I.check}</button>
+/** Aufgabenzeile. home: auf der Startseite ohne Abhak-Knopf (wurde zu oft aus Versehen getroffen) */
+function taskRow(t, { home = false } = {}) {
+  return `<div class="list-item task ${t.done ? 'done' : ''} ${home ? 'home-task' : ''}">
+    ${home ? `<span class="task-dot ${t.important ? 'imp' : ''}" aria-hidden="true"></span>` : `<button class="check ${t.done ? 'on' : ''}" data-act="task-toggle" data-id="${t.id}" aria-label="${t.done ? 'Wieder öffnen' : 'Erledigen'}">${I.check}</button>`}
     <button class="main" data-act="task-edit" data-id="${t.id}" style="text-align:left">
       <div class="title">${t.important ? `<span class="star">★</span> ` : ''}${esc(t.title)}${t.private ? ' <span class="pill priv" title="Nur ihr beide seht diese Aufgabe">🔒 Privat</span>' : ''}</div>
       <div class="sub">${t.done
@@ -1860,7 +1861,7 @@ const VIEWS = {
       </div>` : `<div class="card empty"><div class="big">🗑️</div>Noch kein Abholplan. <br><button class="btn sm primary" style="margin-top:12px" data-act="tab" data-v="trash">Müllplan einrichten</button></div>`}
 
       <h2 class="section-title">Deine Aufgaben <button class="link" data-act="goto-tasks" data-v="mine">Alle</button></h2>
-      ${mine.length ? `<div class="list card tight">${mine.slice(0, 5).map(taskRow).join('')}</div>`
+      ${mine.length ? `<div class="list card tight">${mine.slice(0, 5).map((t) => taskRow(t, { home: true })).join('')}</div>`
         : `<div class="card empty"><div class="big">🎉</div>Alles erledigt – gönn dir was!</div>`}
 
       <h2 class="section-title">Wer hat was zu tun?</h2>
