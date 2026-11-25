@@ -418,6 +418,25 @@ function unlockScroll() {
    unten erscheint dann ein schwarzer Balken, bis man die Seite antippt und zieht.
    Darum: sobald die Tastatur zu ist, Position zurücksetzen und neu ausrichten. */
 const typing = () => !!document.activeElement?.matches?.('input:not([type=checkbox]):not([type=radio]):not([type=range]), textarea, [contenteditable="true"]');
+// Tastatur sichtbar? (iPhone verkleinert das App-Fenster oder den sichtbaren Bereich)
+let kbFullH = window.innerHeight;
+function syncKbOpen() {
+  if (!typing()) kbFullH = window.innerHeight;
+  const vv = window.visualViewport;
+  const open = typing() && matchMedia('(hover: none) and (pointer: coarse)').matches
+    && (kbFullH - window.innerHeight > 120 || (vv && window.innerHeight - vv.height > 120));
+  document.documentElement.classList.toggle('kb-open', !!open);
+}
+addEventListener('resize', syncKbOpen);
+window.visualViewport?.addEventListener('resize', syncKbOpen);
+document.addEventListener('focusin', () => setTimeout(syncKbOpen, 60));
+document.addEventListener('focusout', () => setTimeout(syncKbOpen, 60));
+/** Senden-Knopf: sofort senden, Tastatur bleibt offen (sonst klappt sie zuerst zu und der Tipp geht daneben) */
+function keepKeyboardOnSend(btn, form) {
+  if (!btn) return;
+  btn.addEventListener('mousedown', (e) => e.preventDefault()); // Maus: Fokus im Eingabefeld lassen
+  btn.addEventListener('touchend', (e) => { e.preventDefault(); if (!btn.hidden && !btn.disabled) form.requestSubmit(); }, { passive: false });
+}
 let settleTimer = 0;
 function settleViewport() {
   clearTimeout(settleTimer);
@@ -2265,6 +2284,7 @@ function chatSheet(id) {
       root = api.el;
       api.el.classList.add('dm-sheet');
       const f = $('#dmf', api.el), ta = $('#dmt', api.el), list = $('#dmlist', api.el);
+      keepKeyboardOnSend($('#dm-send', f), f);
       ensureStickerSub();
       // Nachgeladene Bilder, Sticker & Videos machen den Chat höher → dann wieder ganz nach unten
       const toBottom = () => { if (stick && !ui.sel) list.scrollTop = list.scrollHeight; };
@@ -3794,9 +3814,13 @@ function commentsSheet(id) {
       <form class="composer mention-field" id="cf"><button type="button" class="icon-btn c-stk" id="c-stk" aria-label="Mit Sticker kommentieren" title="Sticker">${I.sticker}</button><div id="ct" class="dm-input c-input" contenteditable="true" role="textbox" aria-multiline="true" spellcheck="true" autocapitalize="sentences" data-ph="Kommentieren …" aria-label="Kommentar"></div><button class="send" aria-label="Senden">${I.send}</button></form>`,
     refresh: (api) => {
       const l = $('#clist', api.el);
+      // Nur neu zeichnen, wenn sich wirklich etwas geändert hat (sonst gehen z. B. Hervorhebung & offene Emoji-Leiste verloren)
+      const html = listHtml();
+      if (html === l._last) return;
+      l._last = html;
       const atBottom = l.scrollHeight - l.scrollTop - l.clientHeight < 40;
       const y = l.scrollTop;
-      l.innerHTML = listHtml();
+      l.innerHTML = html;
       l.scrollTop = atBottom ? l.scrollHeight : y;
     },
     onMount: (api) => {
@@ -3833,6 +3857,7 @@ function commentsSheet(id) {
         if (text) emitMentions(text, { exclude: post && post.author !== state.me ? [post.author] : [], what: 'einem Kommentar' });
         setTimeout(() => { const l = $('#clist', api.el); l.scrollTop = l.scrollHeight; }, 80);
       };
+      keepKeyboardOnSend($('#cf .send', api.el), $('#cf', api.el));
       $('#cf', api.el).onsubmit = (e) => {
         e.preventDefault();
         const text = ta.value.trim().slice(0, 1000);

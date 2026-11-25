@@ -5,19 +5,19 @@
 // Bitte keine Browser-APIs hier verwenden.
 export const NEWS = [
   {
-    id: '2026-11-25-neu',
-    date: '2026-11-25',
-    label: '✨ Neue Funktionen',
-    items: [
-      { icon: '🎤', title: 'Sprachnachrichten gedrückt halten', text: 'Im Privatchat kannst du den Mikrofon-Knopf jetzt gedrückt halten, um eine Sprachnachricht aufzunehmen. Loslassen sendet sie, nach links wischen bricht ab. Wischst du nach oben, rastet die Aufnahme ein und du kannst freihändig weitersprechen.' },
-    ],
-  },
-  {
     id: '2026-11-25-mic',
     date: '2026-11-25',
     label: '❗ Wichtiges',
     items: [
       { icon: '🎤', title: 'Mikrofon auf iPhone & iPad dauerhaft erlauben', text: 'Damit du beim Aufnehmen von Sprachnachrichten nicht nach jedem App-Start erneut nach dem Mikrofon gefragt wirst, stell es auf deinem iPhone oder iPad in den Einstellungen auf „Erlauben“: Einstellungen › Apps › Safari › Einstellungen für Websites › Mikrofon › Erlauben. Bei älteren iOS- und iPadOS-Versionen findest du Safari direkt in der Liste der Einstellungen.' },
+    ],
+  },
+  {
+    id: '2026-11-25-neu',
+    date: '2026-11-25',
+    label: '✨ Neue Funktionen',
+    items: [
+      { icon: '🎤', title: 'Sprachnachrichten gedrückt halten', text: 'Im Privatchat kannst du den Mikrofon-Knopf jetzt gedrückt halten, um eine Sprachnachricht aufzunehmen. Loslassen sendet sie, nach links wischen bricht ab. Wischst du nach oben, rastet die Aufnahme ein und du kannst freihändig weitersprechen.' },
     ],
   },
   {

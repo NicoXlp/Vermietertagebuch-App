@@ -1942,3 +1942,10 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 .dm-input:empty::before { white-space: nowrap; }
 /* Flüssiger: Knopf folgt dem Finger beim Wischen ohne Nachlauf */
 .dm-bar.recording #dm-mic { transition: transform .06s linear, background .2s; will-change: transform; }
+
+/* Tastatur offen: Chat direkt über der Tastatur – ohne den Abstand für den Home-Strich */
+@media (hover: none) and (pointer: coarse) and (max-width: 699px) {
+  .dm-sheet.sheet-wrap { transition: padding-bottom .2s ease; }
+  html.kb-open .dm-sheet.sheet-wrap { padding-bottom: 6px; }
+  html.kb-open .dm-sheet .sheet-body { padding-bottom: 10px; }
+}
