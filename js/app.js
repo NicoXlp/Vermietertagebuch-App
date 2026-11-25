@@ -1080,16 +1080,14 @@ const header = (eyebrow, title) => `
     </div>
   </header>`;
 
-/* ─── Weihnachts-Easter-Egg: Antippen → Weihnachtsmann hüpft hervor, „Merry Christmas“ & Konfetti ───
+/* ─── Weihnachts-Easter-Egg: Antippen → Weihnachtsmann hüpft hervor & Konfetti ───
    Die Animation liegt in einer eigenen Ebene über der Seite, damit sie beim Neuzeichnen nicht abbricht. */
 let xeggBusy = false;
 function playXmasEgg(btn) {
   if (xeggBusy || !btn) return;
   xeggBusy = true;
   haptic(20);
-  // Mitte = Mitte der Knopfgruppe (Easter Egg sitzt mittig darüber)
   const r = btn.getBoundingClientRect();
-  const grp = btn.closest('.top-actions')?.getBoundingClientRect() || r;
   const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const fx = document.createElement('div');
   fx.className = `xg-fx ${calm ? 'calm' : ''}`;
@@ -1100,12 +1098,8 @@ function playXmasEgg(btn) {
   fx.innerHTML = `<span class="xg-hop">🎅</span>
     ${bits.map((b, i) => { const a = (i / bits.length) * Math.PI * 2 + Math.random() * 0.4, d = 60 + Math.random() * 70;
       return `<span class="xg-bit" style="--dx:${(Math.cos(a) * d).toFixed(0)}px;--dy:${(Math.sin(a) * d - 30).toFixed(0)}px;--rot:${(Math.random() * 360 - 180).toFixed(0)}deg;--d:${(Math.random() * 0.25).toFixed(2)}s">${b}</span>`; }).join('')}
-    <div class="xg-banner"><span>Merry Christmas</span></div>`;
+`;
   document.body.appendChild(fx);
-  // Banner mittig unter den Knöpfen – aber nie über den Bildschirmrand hinaus
-  const ban = fx.querySelector('.xg-banner'), bw = ban.offsetWidth, vw = document.documentElement.clientWidth;
-  const cx = grp.left + grp.width / 2;
-  fx.style.setProperty('--bx', `${Math.max(bw / 2 + 8, Math.min(vw - bw / 2 - 8, cx)).toFixed(0)}px`);
   btn.classList.add('play');
   setTimeout(() => btn.classList.remove('play'), 1600);
   setTimeout(() => { fx.classList.add('out'); }, 3000);
