@@ -1940,3 +1940,5 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 /* Platzhalter im Eingabefeld nie umbrechen (sonst wird das Feld auf kleinen Handys doppelt so hoch) */
 .dm-input:empty { white-space: nowrap; overflow: hidden; }
 .dm-input:empty::before { white-space: nowrap; }
+/* Flüssiger: Knopf folgt dem Finger beim Wischen ohne Nachlauf */
+.dm-bar.recording #dm-mic { transition: transform .06s linear, background .2s; will-change: transform; }
