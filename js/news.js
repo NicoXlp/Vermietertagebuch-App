@@ -9,7 +9,7 @@ export const NEWS = [
     date: '2026-11-25',
     label: '❗ Wichtiges',
     items: [
-      { icon: '🎤', title: 'Mikrofon auf dem iPhone dauerhaft erlauben', text: 'Damit du beim Aufnehmen von Sprachnachrichten nicht nach jedem App-Start erneut nach dem Mikrofon gefragt wirst, stell es in den iPhone-Einstellungen auf „Erlauben“: Einstellungen › Apps › Safari › Einstellungen für Websites › Mikrofon › Erlauben. Bei älteren iOS-Versionen findest du Safari direkt in der Liste der Einstellungen.' },
+      { icon: '🎤', title: 'Mikrofon auf iPhone & iPad dauerhaft erlauben', text: 'Damit du beim Aufnehmen von Sprachnachrichten nicht nach jedem App-Start erneut nach dem Mikrofon gefragt wirst, stell es auf deinem iPhone oder iPad in den Einstellungen auf „Erlauben“: Einstellungen › Apps › Safari › Einstellungen für Websites › Mikrofon › Erlauben. Bei älteren iOS- und iPadOS-Versionen findest du Safari direkt in der Liste der Einstellungen.' },
     ],
   },
   {
