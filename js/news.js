@@ -14,10 +14,11 @@ export const NEWS = [
     ],
   },
   {
-    id: '2026-11-25-neu',
+    id: '2026-11-25-neu-lupe',
     date: '2026-11-25',
     label: '✨ Neue Funktionen',
     items: [
+      { icon: '🔍', title: 'Lupe beim Ausschneiden', text: 'Wenn du einen Sticker frei mit dem Finger ausschneidest, zeigt dir jetzt eine Lupe die Stelle unter deinem Finger vergrößert. So siehst du genau, wo du schneidest. Kommt dein Finger in die Nähe der Lupe, springt sie in die andere Ecke.' },
       { icon: '🎤', title: 'Sprachnachrichten gedrückt halten', text: 'Im Privatchat kannst du den Mikrofon-Knopf jetzt gedrückt halten, um eine Sprachnachricht aufzunehmen. Loslassen sendet sie, nach links wischen bricht ab. Wischst du nach oben, rastet die Aufnahme ein und du kannst freihändig weitersprechen.' },
     ],
   },
