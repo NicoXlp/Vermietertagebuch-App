@@ -1065,8 +1065,31 @@ function renderNow(animate) {
   updateVoiceUI();
   hydrateMedia();
   settleSegs(v);
+  placeXmasEgg(v);
   sheets.forEach((s) => s.refresh?.(s));
 }
+/** Handys: Easter Egg genau mittig in die Lücke zwischen Namensende und Knöpfen setzen (falls genug Platz) */
+function placeXmasEgg(v = $('#view')) {
+  const egg = v && $('.xegg', v);
+  if (!egg) return;
+  egg.classList.remove('in-gap'); egg.style.left = egg.style.top = '';
+  if (window.innerWidth >= 600) return; // Tablet/PC: links neben den Knöpfen (per CSS)
+  const h1 = $('.top-text h1', v), acts = $('.top-actions', v);
+  if (!h1 || !acts) return;
+  const rg = document.createRange(); rg.selectNodeContents(h1);
+  const rects = [...rg.getClientRects()].filter((r) => r.width > 0);
+  if (!rects.length) return;
+  const lastBottom = Math.max(...rects.map((r) => r.bottom));
+  const textEnd = Math.max(...rects.filter((r) => r.bottom > lastBottom - 6).map((r) => r.right)); // Ende der letzten Zeile
+  const a = acts.getBoundingClientRect(), w = egg.offsetWidth, h = egg.offsetHeight;
+  const gap = a.left - textEnd;
+  if (gap < w + 12) return; // zu wenig Platz → bleibt mittig über den Knöpfen
+  egg.classList.add('in-gap');
+  egg.style.left = `${((textEnd + a.left) / 2 - a.left - w / 2).toFixed(1)}px`;
+  egg.style.top = `${((a.height - h) / 2).toFixed(1)}px`;
+}
+addEventListener('resize', () => placeXmasEgg());
+document.fonts?.ready?.then(() => placeXmasEgg());
 
 const ADD_LABEL = { home: 'Neu erstellen', tasks: 'Neue Aufgabe', trash: 'Neue Tonne', board: 'Neuer Beitrag' };
 const header = (eyebrow, title) => `

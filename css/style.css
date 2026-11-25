@@ -2014,3 +2014,6 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 .xg-fx.calm .xg-hop { animation-duration: 1.4s; }
 /* Breite Bildschirme (Überschrift einzeilig, oben kein Platz): Easter Egg links neben die Knöpfe */
 @media (min-width: 600px) { .xegg { bottom: auto; top: 50%; left: auto; right: calc(100% + 12px); transform: translateY(-50%); } }
+
+/* Handys: Easter Egg in der Lücke zwischen Name und Knöpfen (Position per JS) */
+.xegg.in-gap { bottom: auto; transform: none; }
