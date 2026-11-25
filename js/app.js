@@ -1073,11 +1073,44 @@ const header = (eyebrow, title) => `
   <header class="top">
     <div class="top-text"><p class="eyebrow">${eyebrow}</p><h1>${title}</h1></div>
     <div class="top-actions">
+      ${state.tab === 'home' && today() < XMAS_UNTIL ? '<button class="xegg" data-act="xegg" aria-label="Weihnachtsüberraschung"><span class="xg-tree">🎄</span><span class="xg-santa">🎅</span></button>' : ''}
       ${ADD_LABEL[state.tab] ? `<button class="add-btn" data-act="add" aria-label="${ADD_LABEL[state.tab]}">${I.plus}</button>` : ''}
       <button class="add-btn dm-btn" data-act="dms" aria-label="Nachrichten${dmUnread() ? ` (${dmUnread()} ungelesen)` : ''}">${I.dm}${dmUnread() ? `<b class="badge">${dmUnread()}</b>` : ''}</button>
       <button class="me-btn" data-act="profile" aria-label="Mein Profil">${avatar(state.me, 42)}</button>
     </div>
   </header>`;
+
+/* ─── Weihnachts-Easter-Egg: Antippen → Weihnachtsmann hüpft hervor, „Merry Christmas“ & Konfetti ───
+   Die Animation liegt in einer eigenen Ebene über der Seite, damit sie beim Neuzeichnen nicht abbricht. */
+let xeggBusy = false;
+function playXmasEgg(btn) {
+  if (xeggBusy || !btn) return;
+  xeggBusy = true;
+  haptic(20);
+  // Mitte = Mitte der Knopfgruppe (Easter Egg sitzt mittig darüber)
+  const r = btn.getBoundingClientRect();
+  const grp = btn.closest('.top-actions')?.getBoundingClientRect() || r;
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fx = document.createElement('div');
+  fx.className = `xg-fx ${calm ? 'calm' : ''}`;
+  fx.setAttribute('aria-hidden', 'true');
+  fx.style.setProperty('--x', `${r.left + r.width / 2}px`);
+  fx.style.setProperty('--y', `${r.top + r.height / 2}px`);
+  const bits = ['❄️', '⭐', '🎁', '✨', '❄️', '🔔', '⭐', '🎁', '✨', '❄️', '🍪', '⭐'];
+  fx.innerHTML = `<span class="xg-hop">🎅</span>
+    ${bits.map((b, i) => { const a = (i / bits.length) * Math.PI * 2 + Math.random() * 0.4, d = 60 + Math.random() * 70;
+      return `<span class="xg-bit" style="--dx:${(Math.cos(a) * d).toFixed(0)}px;--dy:${(Math.sin(a) * d - 30).toFixed(0)}px;--rot:${(Math.random() * 360 - 180).toFixed(0)}deg;--d:${(Math.random() * 0.25).toFixed(2)}s">${b}</span>`; }).join('')}
+    <div class="xg-banner"><span>Merry Christmas</span></div>`;
+  document.body.appendChild(fx);
+  // Banner mittig unter den Knöpfen – aber nie über den Bildschirmrand hinaus
+  const ban = fx.querySelector('.xg-banner'), bw = ban.offsetWidth, vw = document.documentElement.clientWidth;
+  const cx = grp.left + grp.width / 2;
+  fx.style.setProperty('--bx', `${Math.max(bw / 2 + 8, Math.min(vw - bw / 2 - 8, cx)).toFixed(0)}px`);
+  btn.classList.add('play');
+  setTimeout(() => btn.classList.remove('play'), 1600);
+  setTimeout(() => { fx.classList.add('out'); }, 3000);
+  setTimeout(() => { fx.remove(); xeggBusy = false; }, 3500);
+}
 
 function localBanner() {
   if (store?.mode !== 'local') return '';
@@ -4839,6 +4872,7 @@ const ACTIONS = {
   export: () => exportData(),
   import: () => importData(),
   'switch-user': () => whoAreYou(true),
+  xegg: (d, el) => playXmasEgg(el),
   leave: async () => {
     if (await confirmSheet('Haus auf diesem Gerät verlassen? Die Daten bleiben für alle anderen erhalten. Du kannst mit dem Code jederzeit zurück.', 'Verlassen')) {
       LS.del('house'); LS.del('me'); location.reload();
