@@ -47,7 +47,6 @@ export const NEWS = [
     label: '✨ Neue Funktionen',
     items: [
       { icon: '🌟', title: 'Eigene Sticker im Privatchat', text: 'Mach aus deinen Fotos eigene Sticker: als Kreis, Quadrat oder Herz zuschneiden oder frei mit dem Finger ausschneiden, auf Wunsch mit weißem Rand. Tippe im Privatchat auf das Sticker-Symbol, um sie zu erstellen und zu senden. Sticker, die du bekommst, kannst du gedrückt halten und speichern.' },
-      { icon: '📌', title: 'Chat anpinnen', text: 'In der Nachrichtenübersicht kannst du einen Privatchat mit der Stecknadel anpinnen. Er steht dann immer ganz oben.' },
       { icon: '⌨️', title: 'Sticker aus der Tastatur', text: 'Sticker und Bilder aus deiner Tastatur kannst du jetzt direkt im Privatchat versenden. Einfach im Eingabefeld auswählen.' },
       { icon: '💬', title: 'Kommentare antworten & reagieren', text: 'Auf Kommentare kannst du jetzt direkt antworten, sie mit ❤️ liken oder mit einem Emoji darauf reagieren.', act: 'tab', v: 'board', btn: 'Zum Social Hub' },
       { icon: '🎄', title: 'Farbschema „Weihnachten“', text: 'Festliches Farbschema in Weihnachtsrot, Tannengrün und warmem Gold, nur bis zum 26. Dezember. 💡 Tipp: Am schönsten wirkt es, wenn die App auf „Dunkel“ eingestellt ist.', act: 'tab', v: 'house', btn: 'Farbschema wählen' },
