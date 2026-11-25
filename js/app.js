@@ -869,7 +869,7 @@ const toggle = (id, label, checked) => `<label class="toggle-row" for="${id}"><s
 function buildTabbar() {
   const bar = $('#tabbar');
   bar.insertAdjacentHTML('beforeend', TABS.map((t) =>
-    `<button class="tab" data-tab="${t.id}" aria-label="${t.label}">${t.icon}<span>${t.label}</span></button>`).join(''));
+    `<button class="tab" data-tab="${t.id}" aria-label="${t.label}" title="${t.label}">${t.icon}</button>`).join(''));
 
   // Die Linse: äußeres Element verschiebt (translateX), inneres Glas skaliert.
   // Getrennt, damit Ziehen (direkt, ohne Verzögerung) und Größe (federnd) sich nicht stören.
