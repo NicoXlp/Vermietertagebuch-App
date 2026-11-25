@@ -1894,3 +1894,9 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 .dm-row .list-item:active:not(:has(button:active)) { background: none; }
 .dm-row:has(.list-item:active) { background: var(--fill); }
 .dm-row.pinned:has(.list-item:active) { background: color-mix(in srgb, var(--accent) 14%, var(--fill)); }
+
+/* Schieberegler (Linse) sitzt perfekt: Rundung = Rundung der Leiste minus Innenabstand (4 px),
+   so ist der Abstand zum Rand überall gleich – unten (Handy), rechts (iPad/Tablet/PC) und auf niedrigen Displays */
+.lens-glass { border-radius: 28px; }
+@media (max-height: 540px) and (max-width: 600px) { .tabbar { border-radius: 27px; } .lens-glass { border-radius: 23px; } }
+@media (min-width: 700px) and (min-height: 500px) { html:not(.phone-ua) .lens-glass { border-radius: 31px; } } /* halbe Höhe (62 px) – Leiste bleibt gleich groß */
