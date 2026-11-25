@@ -2603,7 +2603,7 @@ async function stickerEditor(file) {
   const st = { shape: 'circle', z: 1, ox: 0, oy: 0, border: true, lasso: [], drawing: false };
   openSheet({
     title: '✂️ Zuschneiden',
-    html: `<div class="stk-stage" id="stk-stage"><canvas id="stk-cv"></canvas></div>
+    html: `<div class="stk-stage" id="stk-stage"><canvas id="stk-cv"></canvas><canvas class="stk-loupe" id="stk-loupe" aria-hidden="true" hidden></canvas></div>
       <div class="stk-shapes" role="radiogroup" aria-label="Form">${SHAPES.map(([k, e, n]) => `<button type="button" class="chip" data-shape="${k}" role="radio"><span class="e">${e}</span><span>${n}</span></button>`).join('')}</div>
       <p class="small muted center stk-tip" id="stk-tip"></p>
       <div class="stk-row"><span class="small muted">Zoom</span><input type="range" id="stk-zoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom"><label class="stk-border"><input type="checkbox" id="stk-border" checked><span>Rand</span></label></div>
@@ -2612,6 +2612,36 @@ async function stickerEditor(file) {
       const stage = $('#stk-stage', api.el), cv = $('#stk-cv', api.el), ctx = cv.getContext('2d');
       const zoom = $('#stk-zoom', api.el), tip = $('#stk-tip', api.el);
       let S = 300, dpr = 1;
+      // Lupe beim freien Ausschneiden: zeigt die Stelle unter dem Finger vergrößert (wie beim iPhone)
+      const loupe = $('#stk-loupe', api.el), lctx = loupe.getContext('2d');
+      const LOUPE = 104, LZOOM = 2.6;
+      const showLoupe = ([x, y]) => {
+        const ld = Math.min(3, devicePixelRatio || 1);
+        if (loupe.width !== LOUPE * ld) { loupe.width = loupe.height = LOUPE * ld; }
+        // Finger links oben? → Lupe rechts oben, sonst links oben (nie unter dem Finger)
+        loupe.classList.toggle('right', x < LOUPE + 30 && y < LOUPE + 40);
+        loupe.hidden = false;
+        const src = LOUPE / LZOOM; // Ausschnitt in CSS-Pixeln
+        const k = dpr; // Leinwand-Pixel pro CSS-Pixel
+        const sx = (x - src / 2) * k, sy = (y - src / 2) * k, sw = src * k;
+        lctx.setTransform(1, 0, 0, 1, 0, 0);
+        lctx.fillStyle = '#16161c'; lctx.fillRect(0, 0, loupe.width, loupe.height);
+        // nur den Teil kopieren, der wirklich auf der Leinwand liegt (am Rand nicht verzerren)
+        const x0 = Math.max(0, sx), y0 = Math.max(0, sy), x1 = Math.min(cv.width, sx + sw), y1 = Math.min(cv.height, sy + sw);
+        if (x1 > x0 && y1 > y0) {
+          const f = loupe.width / sw;
+          lctx.imageSmoothingQuality = 'high';
+          lctx.drawImage(cv, x0, y0, x1 - x0, y1 - y0, (x0 - sx) * f, (y0 - sy) * f, (x1 - x0) * f, (y1 - y0) * f);
+        }
+        // Fadenkreuz in der Mitte = genau dort schneidet der Finger
+        const c = loupe.width / 2, r = 7 * ld;
+        lctx.lineWidth = 1.6 * ld; lctx.strokeStyle = 'rgba(0,0,0,.55)';
+        lctx.beginPath(); lctx.arc(c, c, r + 1.2 * ld, 0, Math.PI * 2); lctx.stroke();
+        lctx.strokeStyle = '#fff';
+        lctx.beginPath(); lctx.arc(c, c, r, 0, Math.PI * 2); lctx.moveTo(c - r * 2, c); lctx.lineTo(c - r * 1.2, c); lctx.moveTo(c + r * 1.2, c); lctx.lineTo(c + r * 2, c);
+        lctx.moveTo(c, c - r * 2); lctx.lineTo(c, c - r * 1.2); lctx.moveTo(c, c + r * 1.2); lctx.lineTo(c, c + r * 2); lctx.stroke();
+      };
+      const hideLoupe = () => { loupe.hidden = true; };
       const size = () => { S = stage.clientWidth || 300; dpr = Math.min(3, devicePixelRatio || 1); cv.width = S * dpr; cv.height = S * dpr; paint(); };
       // Bildlage: „cover“ in der Fläche, dann Zoom und Verschiebung
       const geo = () => {
@@ -2680,7 +2710,7 @@ async function stickerEditor(file) {
         pts.set(e.pointerId, local(e));
         if (pts.size === 2) { st.drawing = false; if (st.shape === 'free' && !lassoOk()) st.lasso = []; last = { ...pinch(), z: st.z }; paint(); return; }
         last = null;
-        if (st.shape === 'free') { const g = geo(), [x, y] = local(e); st.lasso = [[(x - g.x) / g.sc, (y - g.y) / g.sc]]; st.drawing = true; paint(); }
+        if (st.shape === 'free') { const g = geo(), [x, y] = local(e); st.lasso = [[(x - g.x) / g.sc, (y - g.y) / g.sc]]; st.drawing = true; paint(); showLoupe([x, y]); }
       });
       stage.addEventListener('pointermove', (e) => {
         if (!pts.has(e.pointerId)) return;
@@ -2697,11 +2727,13 @@ async function stickerEditor(file) {
           if (!st.drawing) return;
           const g = geo(), q = [(cur[0] - g.x) / g.sc, (cur[1] - g.y) / g.sc], l = st.lasso[st.lasso.length - 1];
           if (Math.hypot((q[0] - l[0]) * g.sc, (q[1] - l[1]) * g.sc) >= 3) { st.lasso.push(q); paint(); }
+          showLoupe(cur);
         } else { st.ox += cur[0] - prev[0]; st.oy += cur[1] - prev[1]; clampPan(); paint(); }
       });
       const up = (e) => {
         pts.delete(e.pointerId);
         if (pts.size < 2) last = null;
+        if (!pts.size) hideLoupe();
         if (st.drawing && !pts.size) { st.drawing = false; if (!lassoOk()) st.lasso = []; else haptic(12); paint(); }
       };
       stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);

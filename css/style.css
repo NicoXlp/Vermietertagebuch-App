@@ -1940,3 +1940,12 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 /* Startseite: Aufgaben nur anzeigen (abhaken in der Aufgabe oder unter „Aufgaben“) */
 .home-task .task-dot { width: 10px; height: 10px; margin: 0 10px 0 9px; flex: none; border-radius: 50%; background: var(--accent); opacity: .75; }
 .home-task .task-dot.imp { background: #ff9f0a; opacity: 1; }
+
+/* Lupe beim freien Ausschneiden */
+.stk-stage .stk-loupe {
+  position: absolute; top: 10px; left: 10px; width: 104px; height: 104px; z-index: 2; pointer-events: none;
+  border-radius: 50%; border: 3px solid #fff; background: #16161c;
+  box-shadow: 0 6px 20px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.25);
+}
+.stk-stage .stk-loupe.right { left: auto; right: 10px; }
+.stk-stage .stk-loupe[hidden] { display: none; }
