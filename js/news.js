@@ -10,7 +10,6 @@ export const NEWS = [
     label: '🛠️ Bug-Fixes',
     items: [
       { icon: '🌟', title: 'Sticker in Kommentaren', text: 'Sticker in Kommentaren werden jetzt platzsparend gespeichert. Vorher konnte das Speichern bei Beiträgen mit vielen Sticker-Kommentaren fehlschlagen.' },
-      { icon: '📌', title: 'Angepinnter Chat', text: 'Der angepinnte Chat gilt jetzt für jedes Profil einzeln. Auf geteilten Geräten sieht niemand mehr den angepinnten Chat einer anderen Person.' },
       { icon: '👆', title: 'Sticker gedrückt halten', text: 'Langes Drücken auf einen Sticker öffnet jetzt zuverlässig das Menü der App statt des Bild-Menüs vom iPhone.' },
     ],
   },
