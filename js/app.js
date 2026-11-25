@@ -1588,6 +1588,48 @@ document.addEventListener('keydown', (e) => {
 const blobToDataURL = (blob) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
 
 /** Aufnahme-Steuerung im Erstellen-Sheet */
+/* ─── Gemeinsames Mikrofon ──────────────────────────────────────────────────────────────────────
+   iOS fragt bei Web-Apps bei JEDER neuen Mikrofon-Anfrage erneut nach der Erlaubnis. Deshalb wird das
+   Mikrofon nur einmal angefordert und danach wiederverwendet; zwischen Aufnahmen ist es stummgeschaltet.
+   Nach 10 Minuten ohne Aufnahme (oder beim Verlassen der Seite) wird es ganz freigegeben. */
+const MIC = { stream: null, ctx: null, src: null, an: null, idle: 0, pending: null };
+const micLive = () => !!MIC.stream && MIC.stream.getAudioTracks().some((t) => t.readyState === 'live');
+async function getMic() {
+  clearTimeout(MIC.idle);
+  if (micLive()) { MIC.stream.getAudioTracks().forEach((t) => { t.enabled = true; }); MIC.ctx?.resume?.().catch(() => {}); return MIC.stream; }
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) throw Object.assign(new Error('Dein Browser unterstützt leider keine Sprachaufnahmen'), { code: 'unsupported' });
+  // gleichzeitige Anfragen bündeln (z. B. Vorwärmen beim Antippen + eigentliche Aufnahme)
+  MIC.pending ||= navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } })
+    .finally(() => { MIC.pending = null; });
+  let stream;
+  try { stream = await MIC.pending; } catch (e) { throw Object.assign(new Error('🎤 Kein Mikrofon-Zugriff – bitte in den Einstellungen erlauben'), { code: 'denied', cause: e }); }
+  if (MIC.stream !== stream) {
+    MIC.stream = stream;
+    try {
+      MIC.ctx ||= new (window.AudioContext || window.webkitAudioContext)();
+      MIC.src?.disconnect();
+      MIC.src = MIC.ctx.createMediaStreamSource(stream);
+      MIC.an = MIC.ctx.createAnalyser(); MIC.an.fftSize = 1024;
+      MIC.src.connect(MIC.an);
+      MIC.ctx.resume?.().catch(() => {});
+    } catch (e) { console.error(e); MIC.an = null; }
+  }
+  return stream;
+}
+/** Nach einer Aufnahme: stummschalten statt freigeben (sonst fragt iOS beim nächsten Mal wieder) */
+function pauseMic() {
+  MIC.stream?.getAudioTracks().forEach((t) => { t.enabled = false; });
+  clearTimeout(MIC.idle);
+  MIC.idle = setTimeout(releaseMic, 10 * 60 * 1000);
+}
+function releaseMic() {
+  clearTimeout(MIC.idle);
+  MIC.stream?.getTracks().forEach((t) => t.stop());
+  MIC.src?.disconnect();
+  MIC.stream = null; MIC.src = null; MIC.an = null;
+}
+addEventListener('pagehide', releaseMic);
+
 function setupRecorder(root) {
   const btn = $('#r-btn', root), time = $('#rt', root), hint = $('#r-hint', root);
   const playBtn = $('#r-play', root), discard = $('#r-del', root), bars = $$('#rw i', root);
@@ -1604,10 +1646,7 @@ function setupRecorder(root) {
   const setPreviewIcon = (playing) => { playBtn.innerHTML = playing ? I.pause : I.play; };
 
   async function start() {
-    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) return toast('Dein Browser unterstützt leider keine Sprachaufnahmen', 4000);
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-    } catch { return toast('🎤 Kein Mikrofon-Zugriff – bitte in den Einstellungen erlauben', 4500); }
+    try { stream = await getMic(); } catch (e) { return toast(e.message, 4500); }
     preview?.pause();
     chunks = []; size = 0; levels = []; result = null;
     root.classList.remove('has');
@@ -1623,10 +1662,8 @@ function setupRecorder(root) {
     mr.onstop = finish;
     mr.start(400);
     try {
-      ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const an = ctx.createAnalyser();
-      an.fftSize = 1024;
-      ctx.createMediaStreamSource(stream).connect(an);
+      const an = MIC.an;
+      if (!an) throw new Error('kein Analyser');
       const buf = new Uint8Array(an.fftSize);
       let lastPush = 0;
       const loop = (ts) => {
@@ -1650,8 +1687,7 @@ function setupRecorder(root) {
   function stop() {
     if (mr && mr.state !== 'inactive') mr.stop();
     cancelAnimationFrame(raf);
-    stream?.getTracks().forEach((t) => t.stop());
-    ctx?.close().catch(() => {});
+    pauseMic();
     ctx = null; stream = null;
     root.classList.remove('recording');
     btn.setAttribute('aria-label', 'Neu aufnehmen');
@@ -2770,18 +2806,15 @@ function createVoiceRecorder({ onTick, onAutoStop } = {}) {
   const MAX_BYTES = 650_000, MAX_SEC = 180;
   const mime = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus']
     .find((m) => window.MediaRecorder?.isTypeSupported?.(m)) || '';
-  let mr = null, stream = null, ctx = null, raf = 0, t0 = 0, levels = [], chunks = [], size = 0, done = null, cancelled = false;
+  let mr = null, stream = null, raf = 0, t0 = 0, levels = [], chunks = [], size = 0, done = null, cancelled = false;
   const cleanup = () => {
     cancelAnimationFrame(raf);
-    stream?.getTracks().forEach((t) => t.stop());
-    ctx?.close().catch(() => {});
-    ctx = null; stream = null;
+    if (stream) pauseMic();
+    stream = null;
   };
   return {
     async start() {
-      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) { toast('Dein Browser unterstützt leider keine Sprachaufnahmen', 4000); return false; }
-      try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
-      catch { toast('🎤 Kein Mikrofon-Zugriff – bitte in den Einstellungen erlauben', 4500); return false; }
+      try { stream = await getMic(); } catch (e) { toast(e.message, 4500); return false; }
       if (cancelled) { cleanup(); return false; }
       chunks = []; size = 0; levels = [];
       const opts = { audioBitsPerSecond: 32000 };
@@ -2796,17 +2829,16 @@ function createVoiceRecorder({ onTick, onAutoStop } = {}) {
       mr.start(400);
       t0 = performance.now();
       try {
-        ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const an = ctx.createAnalyser(); an.fftSize = 1024;
-        ctx.createMediaStreamSource(stream).connect(an);
-        const buf = new Uint8Array(an.fftSize); let lastPush = 0;
+        const an = MIC.an;
+        if (!an) throw new Error('kein Analyser');
+        const buf = new Uint8Array(an.fftSize); let lastPush = 0, lastSec = -1;
         const loop = (ts) => {
           an.getByteTimeDomainData(buf);
           let sum = 0; for (const x of buf) { const d = (x - 128) / 128; sum += d * d; }
           const lvl = Math.min(1, Math.sqrt(sum / buf.length) * 5);
           if (ts - lastPush > 90) { levels.push(lvl); lastPush = ts; }
           const sec = (performance.now() - t0) / 1000;
-          onTick?.(sec, lvl);
+          if (Math.floor(sec) !== lastSec) { lastSec = Math.floor(sec); onTick?.(sec, lvl); }
           if (sec >= MAX_SEC) { onAutoStop?.(); return; }
           raf = requestAnimationFrame(loop);
         };
@@ -2862,7 +2894,7 @@ function attachHoldToRecord({ form, mic, to, onTap, getExtra, onSent }) {
   lock.innerHTML = '<span class="lk-ico">🔒</span><span class="lk-arrow">⌃</span>';
   form.append(bar, lock);
   const timeEl = $('.dmr-time', bar), hintEl = $('.dmr-hint', bar), delBtn = $('.dmr-del', bar);
-  let st = 'idle', rec = null, holdTimer = 0, sx = 0, sy = 0, pid = null, busy = false, lockUpAt = 0;
+  let st = 'idle', rec = null, holdTimer = 0, sx = 0, sy = 0, pid = null, busy = false, lockUpAt = 0, moveRaf = 0;
   const micIcon = mic.innerHTML;
   const ui = (on) => {
     bar.hidden = !on; lock.hidden = !on || st === 'locked';
@@ -2912,13 +2944,14 @@ function attachHoldToRecord({ form, mic, to, onTap, getExtra, onSent }) {
     try { mic.setPointerCapture(e.pointerId); } catch { /* egal */ }
     clearTimeout(holdTimer);
     st = 'arming';
-    holdTimer = setTimeout(() => { if (st === 'arming') begin(); }, 220);
+    getMic().then(() => { if (st === 'arming' || st === 'idle') pauseMic(); }).catch(() => {}); // vorwärmen – ohne Nachfrage beim nächsten Mal
+    holdTimer = setTimeout(() => { if (st === 'arming') begin(); }, 180);
   });
   mic.addEventListener('pointermove', (e) => {
     if (e.pointerId !== pid || !['hold', 'starting'].includes(st)) return;
     const dx = e.clientX - sx, dy = e.clientY - sy;
-    mic.style.setProperty('--rx', `${Math.max(-140, Math.min(0, dx))}px`);
-    lock.style.setProperty('--ly', `${Math.max(-60, Math.min(0, dy))}px`);
+    const rx = Math.max(-140, Math.min(0, dx)), ly = Math.max(-60, Math.min(0, dy));
+    if (!moveRaf) moveRaf = requestAnimationFrame(() => { moveRaf = 0; mic.style.setProperty('--rx', `${rx}px`); lock.style.setProperty('--ly', `${ly}px`); });
     if (dy < -70 && st === 'hold') { st = 'locked'; haptic(20); ui(true); return; }
     if (dx < -110) cancel('Aufnahme verworfen');
   });
