@@ -2586,6 +2586,52 @@ function placeCaretEnd(el) {
   try { const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch { /* egal */ }
 }
 
+/* ─── Automatisch ausschneiden: Motiv-Erkennung direkt auf dem Gerät (MediaPipe, kostenlos, ohne Upload) ───
+   Wird erst beim ersten Benutzen geladen (einmalig ca. 16 MB, danach im Browser-Speicher). */
+const MP_VER = '0.10.21';
+const MP_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MP_VER}`;
+const MP_MODEL = 'https://storage.googleapis.com/mediapipe-models/interactive_segmenter/magic_touch/float32/1/magic_touch.tflite';
+let segmenterP = null;
+function getSegmenter() {
+  segmenterP ||= (async () => {
+    const vision = await import(`${MP_BASE}/vision_bundle.mjs`);
+    const files = await vision.FilesetResolver.forVisionTasks(`${MP_BASE}/wasm`);
+    const make = (delegate) => vision.InteractiveSegmenter.createFromOptions(files, {
+      baseOptions: { modelAssetPath: MP_MODEL, delegate }, outputCategoryMask: false, outputConfidenceMasks: true,
+    });
+    try { return await make('GPU'); } catch { return await make('CPU'); }
+  })().catch((e) => { segmenterP = null; throw e; });
+  return segmenterP;
+}
+/** Motiv an Stelle (nx, ny) (0…1) erkennen → Maske (Canvas in Bildgröße, Alpha = Motiv) + Begrenzung */
+async function segmentAt(imgCanvas, nx, ny) {
+  const seg = await getSegmenter();
+  const res = seg.segment(imgCanvas, { keypoint: { x: nx, y: ny } });
+  try {
+    const m = res.confidenceMasks?.[0];
+    if (!m) return null;
+    const w = m.width, h = m.height, conf = m.getAsFloat32Array();
+    const mc = document.createElement('canvas'); mc.width = w; mc.height = h;
+    const mx = mc.getContext('2d'), id = mx.createImageData(w, h);
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let i = 0; i < conf.length; i++) {
+      const a = Math.max(0, Math.min(1, (conf[i] - 0.35) / 0.3)); // weiche Kante
+      id.data[i * 4 + 3] = Math.round(a * 255);
+      if (a > 0.5) { const x = i % w, y = (i / w) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+    }
+    if (x1 < 0) return null;
+    mx.putImageData(id, 0, 0);
+    // Maske auf Bildgröße bringen (falls das Modell eine andere Auflösung liefert)
+    const sx = imgCanvas.width / w, sy = imgCanvas.height / h;
+    let mask = mc;
+    if (w !== imgCanvas.width || h !== imgCanvas.height) {
+      mask = document.createElement('canvas'); mask.width = imgCanvas.width; mask.height = imgCanvas.height;
+      mask.getContext('2d').drawImage(mc, 0, 0, mask.width, mask.height);
+    }
+    return { mask, box: { x: x0 * sx, y: y0 * sy, w: (x1 - x0 + 1) * sx, h: (y1 - y0 + 1) * sy } };
+  } finally { res.close?.(); }
+}
+
 /** Zuschneiden: Form wählen (Kreis, Quadrat, Herz) oder frei mit dem Finger ausschneiden */
 async function stickerEditor(file) {
   let img;
@@ -2599,8 +2645,8 @@ async function stickerEditor(file) {
     URL.revokeObjectURL(url);
     img = c;
   } catch (e) { return toast(`⚠️ ${e.message}`, 4000); }
-  const SHAPES = [['full', '🖼️', 'Ganz'], ['circle', '⭕', 'Kreis'], ['square', '⬜', 'Quadrat'], ['heart', '❤️', 'Herz'], ['free', '✂️', 'Frei']];
-  const st = { shape: 'circle', z: 1, ox: 0, oy: 0, border: true, lasso: [], drawing: false };
+  const SHAPES = [['auto', '✨', 'Auto'], ['full', '🖼️', 'Ganz'], ['circle', '⭕', 'Kreis'], ['square', '⬜', 'Quadrat'], ['heart', '❤️', 'Herz'], ['free', '✂️', 'Frei']];
+  const st = { shape: 'circle', z: 1, ox: 0, oy: 0, border: true, lasso: [], drawing: false, cut: null, busy: false, loadMsg: '' };
   openSheet({
     title: '✂️ Zuschneiden',
     html: `<div class="stk-stage" id="stk-stage"><canvas id="stk-cv"></canvas><canvas class="stk-loupe" id="stk-loupe" aria-hidden="true" hidden></canvas></div>
@@ -2648,7 +2694,7 @@ async function stickerEditor(file) {
         // „Ganz“: komplettes Bild sichtbar (einpassen), sonst Fläche füllen + Zoom/Verschieben
         if (st.shape === 'full') { const m = S * 0.07, sc = Math.min((S - 2 * m) / img.width, (S - 2 * m) / img.height), dw = img.width * sc, dh = img.height * sc; return { sc, x: (S - dw) / 2, y: (S - dh) / 2, dw, dh }; }
         // „Frei“: ganzes Foto sichtbar (nichts abgeschnitten) – sonst füllt das Foto die Fläche
-        const base = st.shape === 'free' ? Math.min(S / img.width, S / img.height) : Math.max(S / img.width, S / img.height);
+        const base = st.shape === 'free' || st.shape === 'auto' ? Math.min(S / img.width, S / img.height) : Math.max(S / img.width, S / img.height);
         const sc = base * st.z, dw = img.width * sc, dh = img.height * sc;
         return { sc, x: S / 2 - dw / 2 + st.ox, y: S / 2 - dh / 2 + st.oy, dw, dh }; };
       const clampPan = () => { const g = geo(); const mx = Math.max(0, (g.dw - S) / 2), my = Math.max(0, (g.dh - S) / 2); st.ox = Math.max(-mx, Math.min(mx, st.ox)); st.oy = Math.max(-my, Math.min(my, st.oy)); };
@@ -2679,6 +2725,22 @@ async function stickerEditor(file) {
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.clearRect(0, 0, S, S);
         ctx.drawImage(img, g.x, g.y, g.dw, g.dh);
+        if (st.shape === 'auto') {
+          if (st.cut) {
+            // außerhalb des erkannten Motivs abdunkeln
+            const o = document.createElement('canvas'); o.width = cv.width; o.height = cv.height;
+            const ox = o.getContext('2d'); ox.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ox.fillStyle = 'rgba(0,0,0,.6)'; ox.fillRect(0, 0, S, S);
+            ox.globalCompositeOperation = 'destination-out'; ox.drawImage(st.cut.mask, g.x, g.y, g.dw, g.dh);
+            ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(o, 0, 0); ctx.restore();
+          }
+          zoom.disabled = false; zoom.closest('.stk-row').classList.remove('off');
+          tip.textContent = st.busy ? (st.loadMsg || 'Motiv wird erkannt …') : st.cut ? 'Fertig ✨ Anderes Motiv? Einfach antippen' : 'Tippe auf das Motiv, das ausgeschnitten werden soll';
+          api.el.querySelectorAll('[data-shape]').forEach((b) => { const on = b.dataset.shape === st.shape; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); });
+          stage.classList.toggle('busy', st.busy);
+          return;
+        }
+        stage.classList.remove('busy');
         const has = st.shape !== 'free' || (lassoOk() && !st.drawing);
         if (has) {
           // außerhalb abdunkeln
@@ -2728,9 +2790,26 @@ async function stickerEditor(file) {
           const g = geo(), q = [(cur[0] - g.x) / g.sc, (cur[1] - g.y) / g.sc], l = st.lasso[st.lasso.length - 1];
           if (Math.hypot((q[0] - l[0]) * g.sc, (q[1] - l[1]) * g.sc) >= 3) { st.lasso.push(q); paint(); }
           showLoupe(cur);
-        } else { st.ox += cur[0] - prev[0]; st.oy += cur[1] - prev[1]; clampPan(); paint(); }
+        } else if (st.shape !== 'auto') { st.ox += cur[0] - prev[0]; st.oy += cur[1] - prev[1]; clampPan(); paint(); }
       });
+      let tapStart = null;
+      stage.addEventListener('pointerdown', (e) => { tapStart = pts.size <= 1 ? { x: e.clientX, y: e.clientY, t: Date.now() } : null; }, true);
+      const autoCut = async ([x, y]) => {
+        if (st.busy) return;
+        const g = geo(), nx = (x - g.x) / g.dw, ny = (y - g.y) / g.dh;
+        if (nx < 0 || ny < 0 || nx > 1 || ny > 1) return toast('Tippe direkt auf das Foto');
+        st.busy = true; st.loadMsg = segmenterP ? '' : 'Erkennung wird geladen … (nur beim ersten Mal)'; paint();
+        try {
+          const cut = await segmentAt(img, nx, ny);
+          if (!cut) toast('Hier wurde kein Motiv erkannt – tippe direkt auf das Motiv 🙂', 3500);
+          else { st.cut = cut; haptic(12); }
+        } catch (err) {
+          console.error(err);
+          toast(navigator.onLine === false ? 'Für das erste Mal braucht die Erkennung Internet 📶' : 'Automatisch ausschneiden hat nicht geklappt – versuch „Frei“ ✂️', 4500);
+        } finally { st.busy = false; st.loadMsg = ''; if (!api.closed) paint(); }
+      };
       const up = (e) => {
+        if (st.shape === 'auto' && tapStart && !last && pts.size === 1 && Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) < 10 && Date.now() - tapStart.t < 600) autoCut(local(e));
         pts.delete(e.pointerId);
         if (pts.size < 2) last = null;
         if (!pts.size) hideLoupe();
@@ -2740,6 +2819,38 @@ async function stickerEditor(file) {
       stage.addEventListener('wheel', (e) => { e.preventDefault(); if (st.shape === 'full') return; st.z = Math.max(1, Math.min(4, st.z * (e.deltaY < 0 ? 1.08 : 1 / 1.08))); zoom.value = st.z; clampPan(); paint(); }, { passive: false });
 
       $('#stk-save', api.el).onclick = () => {
+        if (st.shape === 'auto') {
+          if (st.busy) return toast('Moment, das Motiv wird noch erkannt …');
+          if (!st.cut) return toast('Tippe zuerst auf das Motiv ✨');
+          const { mask, box } = st.cut;
+          const enc = (O) => {
+            const b = st.border ? O * 0.035 : 0, pad = Math.ceil(b) + 2, k = (O - 2 * pad) / Math.max(box.w, box.h);
+            const cw = Math.max(1, Math.round(box.w * k)), ch = Math.max(1, Math.round(box.h * k));
+            // Motiv mit weicher Kante freistellen
+            const cut = document.createElement('canvas'); cut.width = cw; cut.height = ch;
+            const cx = cut.getContext('2d');
+            cx.drawImage(img, box.x, box.y, box.w, box.h, 0, 0, cw, ch);
+            cx.globalCompositeOperation = 'destination-in';
+            cx.drawImage(mask, box.x, box.y, box.w, box.h, 0, 0, cw, ch);
+            const c = document.createElement('canvas'); c.width = cw + 2 * pad; c.height = ch + 2 * pad;
+            const x = c.getContext('2d');
+            if (b) {
+              // weißer Rand: Umriss rundherum versetzt weiß zeichnen
+              const sil = document.createElement('canvas'); sil.width = cw; sil.height = ch;
+              const sx = sil.getContext('2d'); sx.drawImage(cut, 0, 0); sx.globalCompositeOperation = 'source-in'; sx.fillStyle = '#fff'; sx.fillRect(0, 0, cw, ch);
+              for (let a = 0; a < 360; a += 12) x.drawImage(sil, pad + Math.cos(a * Math.PI / 180) * b, pad + Math.sin(a * Math.PI / 180) * b);
+            }
+            x.drawImage(cut, pad, pad);
+            let d = c.toDataURL('image/webp', 0.86);
+            if (!d.startsWith('data:image/webp')) d = c.toDataURL('image/png');
+            return { d, w: c.width, h: c.height };
+          };
+          let out = enc(384), O = 384;
+          while (out.d.length > 260_000 && O > 160) { O = Math.round(O * 0.8); out = enc(O); }
+          saveSticker(out.d, out.w, out.h);
+          api.close();
+          return;
+        }
         if (st.shape === 'free' && !lassoOk()) return toast('Schneide zuerst etwas aus ✂️');
         const path = shapePath();
         // Begrenzung der Form
