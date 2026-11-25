@@ -14,10 +14,11 @@ export const NEWS = [
     ],
   },
   {
-    id: '2026-11-25-neu-auto',
+    id: '2026-11-25-neu-xmas',
     date: '2026-11-25',
     label: '✨ Neue Funktionen',
     items: [
+      { icon: '🔎', title: 'Psst … wer ist denn da?', text: 'Irgendwo in der App sind ein geheimnisvoller Christbaum und ein kleiner Weihnachtsmann aufgetaucht. Kannst du sie finden? Schau dich gut um und tipp sie an, wenn du sie entdeckst. Vielleicht passiert ja etwas Magisches! 🎄🎅' },
       { icon: '✨', title: 'Sticker automatisch ausschneiden', text: 'Beim Erstellen eines Stickers gibt es jetzt die Option „Auto“: Tippe einfach auf das Motiv und die App schneidet es automatisch aus. Die Erkennung läuft direkt auf deinem Handy, deine Fotos werden nirgends hochgeladen.' },
       { icon: '🔍', title: 'Lupe beim Ausschneiden', text: 'Wenn du einen Sticker frei mit dem Finger ausschneidest, zeigt dir jetzt eine Lupe die Stelle unter deinem Finger vergrößert. So siehst du genau, wo du schneidest. Kommt dein Finger in die Nähe der Lupe, springt sie in die andere Ecke.' },
       { icon: '🎤', title: 'Sprachnachrichten gedrückt halten', text: 'Im Privatchat kannst du den Mikrofon-Knopf jetzt gedrückt halten, um eine Sprachnachricht aufzunehmen. Loslassen sendet sie, nach links wischen bricht ab. Wischst du nach oben, rastet die Aufnahme ein und du kannst freihändig weitersprechen.' },
