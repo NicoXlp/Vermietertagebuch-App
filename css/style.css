@@ -1900,3 +1900,43 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 .lens-glass { border-radius: 28px; }
 @media (max-height: 540px) and (max-width: 600px) { .tabbar { border-radius: 27px; } .lens-glass { border-radius: 23px; } }
 @media (min-width: 700px) and (min-height: 500px) { html:not(.phone-ua) .lens-glass { border-radius: 34px; } } /* Kreis, konzentrisch zur Leiste (38 − 4) */
+
+/* ─── Sprachnachricht per Gedrückthalten ─── */
+.dm-bar { position: relative; }
+#dm-mic { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; transition: transform .2s var(--spring), background .2s; }
+.dm-bar.recording #dm-mic { transform: translateX(var(--rx, 0px)) scale(1.35); background: #ff3b30; color: #fff; z-index: 3; }
+.dm-bar.rec-locked #dm-mic { transform: none; background: var(--accent-btn, var(--accent)); color: var(--on-accent, #fff); }
+.dm-rec {
+  position: absolute; left: 0; right: 56px; bottom: 0; height: 44px; z-index: 2;
+  display: flex; align-items: center; gap: 10px; padding: 0 14px; border-radius: 22px;
+  background: var(--fill); background: linear-gradient(var(--fill), var(--fill)), var(--bg);
+  font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.dm-rec[hidden] { display: none; }
+.dm-rec .dmr-dot { width: 10px; height: 10px; border-radius: 50%; background: #ff3b30; animation: recBlink 1s ease-in-out infinite; flex: none; }
+@keyframes recBlink { 50% { opacity: .25; } }
+.dm-rec .dmr-hint { margin-left: auto; color: var(--text-2); font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dm-rec .dmr-del { width: 34px; height: 34px; margin-left: -8px; color: var(--danger, #ff453a); flex: none; }
+.dm-rec .dmr-del svg { width: 19px; height: 19px; }
+.dm-lock {
+  position: absolute; right: 2px; bottom: 62px; width: 40px; padding: 8px 0 6px; z-index: 3;
+  display: flex; flex-direction: column; align-items: center; gap: 2px; border-radius: 20px;
+  background: var(--glass-bg-strong); box-shadow: var(--glass-shadow); font-size: 15px;
+  transform: translateY(var(--ly, 0px)); animation: lockIn .25s var(--spring);
+}
+.dm-lock[hidden] { display: none; }
+.dm-lock .lk-arrow { font-size: 14px; line-height: 1; color: var(--text-2); animation: lockHint 1.2s ease-in-out infinite; }
+@keyframes lockIn { from { opacity: 0; transform: translateY(10px); } }
+@keyframes lockHint { 50% { transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) { .dm-rec .dmr-dot, .dm-lock .lk-arrow { animation: none; } }
+.dm-rec .dmr-time { font-size: 16px; font-weight: 700; min-width: 38px; }
+.dm-rec .dmr-hint { font-size: 13px; }
+
+/* Startseite: Tonnen nur anzeigen (abhaken unter „Müll“) */
+.home-bin-done { color: var(--green, #34c759); font-weight: 600; margin-top: 2px; }
+
+/* Während der Aufnahme: Werkzeuge & Eingabefeld ausblenden (Leiste liegt darüber) */
+.dm-bar.recording > :not(.dm-rec):not(.dm-lock):not(#dm-mic):not(#dm-send) { visibility: hidden; }
+/* Platzhalter im Eingabefeld nie umbrechen (sonst wird das Feld auf kleinen Handys doppelt so hoch) */
+.dm-input:empty { white-space: nowrap; overflow: hidden; }
+.dm-input:empty::before { white-space: nowrap; }

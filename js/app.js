@@ -1797,8 +1797,9 @@ const VIEWS = {
           <div style="flex:1;min-width:0">
             <div style="font-weight:700">${esc(p.bin.name)}</div>
             <div class="small muted bin-who">${binWhoHtml(p)}${soon && !p.done ? ' · am Vorabend rausstellen' : ''}</div>
+            ${p.done ? `<div class="small home-bin-done">✓ Rausgestellt von ${p.done.by === state.me ? 'dir' : esc(nameOf(p.done.by))}</div>` : ''}
           </div>
-        </div>${confirmBox(p)}`).join('')}
+        </div>`).join('')}
       </div>` : `<div class="card empty"><div class="big">🗑️</div>Noch kein Abholplan. <br><button class="btn sm primary" style="margin-top:12px" data-act="tab" data-v="trash">Müllplan einrichten</button></div>`}
 
       <h2 class="section-title">Deine Aufgaben <button class="link" data-act="goto-tasks" data-v="mine">Alle</button></h2>
@@ -2199,8 +2200,10 @@ function chatSheet(id) {
   let lastHtml = '';
   const ui = { sel: null, reply: null };
   let root = null; // Sheet-Element (steht schon in onMount bereit)
+  let holdRec = null; // laufende Aufnahme per Gedrückthalten
   const api = openSheet({
     title: dn(id),
+    onClose: () => holdRec?.cancel(),
     html: `<div class="dm-pres small muted" id="dm-pres">${[nickOf(id) ? esc(other.name) : '', floorName(other.floor), presenceText(id)].filter(Boolean).join(' · ')}</div>
       <div class="dm-list" id="dmlist"></div>
       <div class="dm-replybar" id="dm-rb" hidden></div>
@@ -2277,7 +2280,12 @@ function chatSheet(id) {
         setTimeout(() => { list.scrollTop = list.scrollHeight; }, 60);
         ta.focus();
       };
-      $('#dm-mic', f).onclick = () => dmVoiceSheet(id, replyData(), () => setReply(null));
+      holdRec = attachHoldToRecord({
+        form: f, mic: $('#dm-mic', f), to: id,
+        onTap: () => dmVoiceSheet(id, replyData(), () => setReply(null)),
+        getExtra: replyData,
+        onSent: () => { setReply(null); setTimeout(() => { list.scrollTop = list.scrollHeight; }, 80); },
+      });
       $('#dm-stk', f).onclick = () => stickerPanel(id, replyData(), () => { setReply(null); setTimeout(() => { list.scrollTop = list.scrollHeight; }, 80); });
       $('#dm-file', f).onchange = (e) => {
         const files = [...e.target.files];
@@ -2742,15 +2750,7 @@ function dmVoiceSheet(to, extra = {}, onSent) {
         const submit = $('button[type=submit]', f);
         submit.disabled = true;
         try {
-          const data = await blobToDataURL(r.blob);
-          if (data.length > 950_000) throw new Error('Die Aufnahme ist zu lang – bitte kürzer aufnehmen');
-          const audioId = newId();
-          audioCache.set(audioId, data);
-          await Promise.race([
-            store.add('audio', { id: audioId, data, mime: r.mime, duration: r.duration, author: state.me, createdAt: Date.now() }),
-            new Promise((res) => setTimeout(res, 4000)),
-          ]);
-          sendDm(to, { voice: { audioId, duration: r.duration, peaks: r.peaks, mime: r.mime, heard: [] }, ...extra });
+          await sendVoiceDm(to, r, extra);
           onSent?.();
           api.close();
         } catch (e) {
@@ -2761,6 +2761,186 @@ function dmVoiceSheet(to, extra = {}, onSent) {
       };
     },
   });
+}
+
+/* ─── Sprachnachricht per Gedrückthalten (Privatchat) ────────────────────────────────────────
+   Gedrückt halten = aufnehmen, loslassen = senden, nach links wischen = abbrechen,
+   nach oben wischen = einrasten (freihändig weiter sprechen). Kurzes Antippen öffnet weiter das Aufnahmefenster. */
+function createVoiceRecorder({ onTick, onAutoStop } = {}) {
+  const MAX_BYTES = 650_000, MAX_SEC = 180;
+  const mime = ['audio/mp4;codecs=mp4a.40.2', 'audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus']
+    .find((m) => window.MediaRecorder?.isTypeSupported?.(m)) || '';
+  let mr = null, stream = null, ctx = null, raf = 0, t0 = 0, levels = [], chunks = [], size = 0, done = null, cancelled = false;
+  const cleanup = () => {
+    cancelAnimationFrame(raf);
+    stream?.getTracks().forEach((t) => t.stop());
+    ctx?.close().catch(() => {});
+    ctx = null; stream = null;
+  };
+  return {
+    async start() {
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) { toast('Dein Browser unterstützt leider keine Sprachaufnahmen', 4000); return false; }
+      try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+      catch { toast('🎤 Kein Mikrofon-Zugriff – bitte in den Einstellungen erlauben', 4500); return false; }
+      if (cancelled) { cleanup(); return false; }
+      chunks = []; size = 0; levels = [];
+      const opts = { audioBitsPerSecond: 32000 };
+      if (mime) opts.mimeType = mime;
+      mr = new MediaRecorder(stream, opts);
+      done = new Promise((res) => { mr.onstop = () => res(); });
+      mr.ondataavailable = (e) => {
+        if (!e.data.size) return;
+        chunks.push(e.data); size += e.data.size;
+        if (size > MAX_BYTES && mr.state === 'recording') { toast('Maximale Länge erreicht'); onAutoStop?.(); }
+      };
+      mr.start(400);
+      t0 = performance.now();
+      try {
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const an = ctx.createAnalyser(); an.fftSize = 1024;
+        ctx.createMediaStreamSource(stream).connect(an);
+        const buf = new Uint8Array(an.fftSize); let lastPush = 0;
+        const loop = (ts) => {
+          an.getByteTimeDomainData(buf);
+          let sum = 0; for (const x of buf) { const d = (x - 128) / 128; sum += d * d; }
+          const lvl = Math.min(1, Math.sqrt(sum / buf.length) * 5);
+          if (ts - lastPush > 90) { levels.push(lvl); lastPush = ts; }
+          const sec = (performance.now() - t0) / 1000;
+          onTick?.(sec, lvl);
+          if (sec >= MAX_SEC) { onAutoStop?.(); return; }
+          raf = requestAnimationFrame(loop);
+        };
+        raf = requestAnimationFrame(loop);
+      } catch (e) {
+        console.error(e);
+        const tick = () => { if (!stream) return; const sec = (performance.now() - t0) / 1000; onTick?.(sec, 0); if (sec >= MAX_SEC) { onAutoStop?.(); return; } setTimeout(tick, 200); };
+        tick();
+      }
+      return true;
+    },
+    /** Beenden und Ergebnis liefern (null = zu kurz / nichts aufgenommen) */
+    async stop() {
+      const duration = (performance.now() - t0) / 1000;
+      if (mr && mr.state !== 'inactive') { mr.stop(); await done; }
+      cleanup();
+      if (!mr || duration < 0.8 || !chunks.length) return null;
+      const blob = new Blob(chunks, { type: mr.mimeType || mime || 'audio/webm' });
+      const n = 40, peaks = [];
+      for (let i = 0; i < n; i++) {
+        const sl = levels.slice(Math.floor((i * levels.length) / n), Math.floor(((i + 1) * levels.length) / n));
+        peaks.push(sl.length ? Math.max(...sl) : 0);
+      }
+      const mx = Math.max(0.05, ...peaks);
+      return { blob, duration: Math.round(duration * 10) / 10, peaks: peaks.map((v) => +(v / mx).toFixed(2)), mime: blob.type };
+    },
+    cancel() { cancelled = true; if (mr && mr.state !== 'inactive') mr.stop(); cleanup(); },
+  };
+}
+
+/** Sprachnachricht speichern und im Privatchat senden */
+async function sendVoiceDm(to, r, extra = {}) {
+  const data = await blobToDataURL(r.blob);
+  if (data.length > 950_000) throw new Error('Die Aufnahme ist zu lang – bitte kürzer aufnehmen');
+  const audioId = newId();
+  audioCache.set(audioId, data);
+  await Promise.race([
+    store.add('audio', { id: audioId, data, mime: r.mime, duration: r.duration, author: state.me, createdAt: Date.now() }),
+    new Promise((res) => setTimeout(res, 4000)),
+  ]);
+  sendDm(to, { voice: { audioId, duration: r.duration, peaks: r.peaks, mime: r.mime, heard: [] }, ...extra });
+}
+
+/** Mikrofon-Knopf im Chat: Antippen → Aufnahmefenster, Gedrückthalten → direkt aufnehmen */
+function attachHoldToRecord({ form, mic, to, onTap, getExtra, onSent }) {
+  const bar = document.createElement('div');
+  bar.className = 'dm-rec'; bar.hidden = true;
+  bar.innerHTML = `<button type="button" class="icon-btn dmr-del" aria-label="Aufnahme verwerfen" hidden>${I.trash}</button>
+    <span class="dmr-dot" aria-hidden="true"></span><span class="dmr-time">0:00</span>
+    <span class="dmr-hint">‹ Abbrechen</span>`;
+  const lock = document.createElement('div');
+  lock.className = 'dm-lock'; lock.hidden = true;
+  lock.innerHTML = '<span class="lk-ico">🔒</span><span class="lk-arrow">⌃</span>';
+  form.append(bar, lock);
+  const timeEl = $('.dmr-time', bar), hintEl = $('.dmr-hint', bar), delBtn = $('.dmr-del', bar);
+  let st = 'idle', rec = null, holdTimer = 0, sx = 0, sy = 0, pid = null, busy = false, lockUpAt = 0;
+  const micIcon = mic.innerHTML;
+  const ui = (on) => {
+    bar.hidden = !on; lock.hidden = !on || st === 'locked';
+    form.classList.toggle('recording', on);
+    form.classList.toggle('rec-locked', on && st === 'locked');
+    delBtn.hidden = st !== 'locked';
+    hintEl.textContent = st === 'locked' ? 'Freihändig' : '‹ Abbrechen';
+    mic.innerHTML = on && st === 'locked' ? I.send : micIcon;
+    mic.setAttribute('aria-label', on && st === 'locked' ? 'Sprachnachricht senden' : 'Sprachnachricht aufnehmen');
+    if (!on) { mic.style.removeProperty('--rx'); lock.style.removeProperty('--ly'); timeEl.textContent = '0:00'; }
+  };
+  const reset = () => { st = 'idle'; rec = null; pid = null; ui(false); };
+  const cancel = (msg) => { rec?.cancel(); reset(); haptic(10); if (msg) toast(msg); };
+  const finish = async () => {
+    if (!rec || busy) return;
+    const r0 = rec; st = 'sending'; busy = true;
+    try {
+      const r = await r0.stop();
+      reset();
+      if (!r) { toast('Zu kurz – halte den Knopf etwas länger gedrückt 🎤'); return; }
+      await sendVoiceDm(to, r, getExtra?.() || {});
+      onSent?.();
+    } catch (e) { console.error(e); reset(); toast(`⚠️ ${e.message || 'Konnte die Sprachnachricht nicht speichern'}`, 4500); }
+    finally { busy = false; }
+  };
+  const begin = async () => {
+    st = 'starting';
+    rec = createVoiceRecorder({
+      onTick: (sec) => { timeEl.textContent = fmtDur(sec); },
+      onAutoStop: () => finish(),
+    });
+    ui(true);
+    haptic(15);
+    const ok = await rec.start();
+    if (!ok) { reset(); return; }
+    if (st === 'starting') st = 'hold';
+    else if (st === 'released') { // schon losgelassen, bevor das Mikrofon bereit war (z. B. Erlaubnis-Abfrage)
+      rec.cancel(); reset(); toast('Halte den Mikrofon-Knopf gedrückt, solange du sprichst 🎤', 3500);
+    }
+  };
+  mic.addEventListener('contextmenu', (e) => e.preventDefault());
+  mic.addEventListener('pointerdown', (e) => {
+    if (busy || (e.pointerType === 'mouse' && e.button !== 0)) return;
+    if (st === 'locked') return; // eingerastet: Klick sendet (siehe click)
+    e.preventDefault();
+    sx = e.clientX; sy = e.clientY; pid = e.pointerId;
+    try { mic.setPointerCapture(e.pointerId); } catch { /* egal */ }
+    clearTimeout(holdTimer);
+    st = 'arming';
+    holdTimer = setTimeout(() => { if (st === 'arming') begin(); }, 220);
+  });
+  mic.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== pid || !['hold', 'starting'].includes(st)) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    mic.style.setProperty('--rx', `${Math.max(-140, Math.min(0, dx))}px`);
+    lock.style.setProperty('--ly', `${Math.max(-60, Math.min(0, dy))}px`);
+    if (dy < -70 && st === 'hold') { st = 'locked'; haptic(20); ui(true); return; }
+    if (dx < -110) cancel('Aufnahme verworfen');
+  });
+  const up = (e) => {
+    if (e.pointerId !== pid) return;
+    clearTimeout(holdTimer);
+    if (st === 'arming') { st = 'idle'; pid = null; onTap(); return; }
+    if (st === 'starting') { st = 'released'; return; }
+    if (st === 'hold') finish();
+    else if (st === 'locked') lockUpAt = Date.now(); // Loslassen nach dem Einrasten ist kein „Senden“
+    pid = null;
+  };
+  mic.addEventListener('pointerup', up);
+  mic.addEventListener('pointercancel', (e) => { if (e.pointerId !== pid) return; clearTimeout(holdTimer); if (st === 'arming') { st = 'idle'; return; } if (st === 'hold' || st === 'starting') cancel(); });
+  mic.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (Date.now() - lockUpAt < 400) return;
+    if (st === 'locked') finish();
+    else if (st === 'idle' && e.detail === 0) onTap(); // Tastatur (Enter/Leertaste)
+  });
+  delBtn.addEventListener('click', () => cancel('Aufnahme verworfen'));
+  return { cancel: () => { if (st !== 'idle') cancel(); } };
 }
 
 function dmListSheet() {
