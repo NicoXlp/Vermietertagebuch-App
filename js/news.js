@@ -85,7 +85,7 @@ export const NEWS = [
     items: [
       { icon: '🫧', title: 'Fenster als Blase', text: 'Beiträge, Aufgaben, Kommentare & Co. öffnen sich jetzt als schwebende Blase.' },
       { icon: '📱', title: 'Kein schwarzer Balken', text: 'Nach dem Tippen oder Markieren bleibt unten am iPhone kein schwarzer Streifen mehr stehen.' },
-      { icon: '🖥️', title: 'Auf allen Geräten', text: 'Gleiches Aussehen auf Handy, Tablet, PC und Faltbildschirmen, mit sanftem Ein- und Ausblenden.' },
+      { icon: '🖥️', title: 'Auf allen Geräten', text: 'Gleiches Aussehen auf Handy, Tablet und PC, mit sanftem Ein- und Ausblenden.' },
     ],
   },
   {
@@ -116,16 +116,6 @@ export const NEWS = [
       { icon: '🐞', title: 'Bugs melden', text: 'Etwas funktioniert nicht? Melde es direkt auf der Startseite unter „Wünsche & Anregungen“.', act: 'fb-new', v: 'bug', btn: 'Bug melden' },
       { icon: '💡', title: 'Wünsche äußern', text: 'Dir fehlt eine Funktion? Schreib sie auf, sie landet direkt bei Nico zum Umsetzen.', act: 'fb-new', v: 'wish', btn: 'Wunsch äußern' },
       { icon: '🔒', title: 'Nur für dich sichtbar', text: 'Deine Meldungen siehst nur du. Du bekommst Bescheid, sobald sie in Arbeit oder erledigt sind.', act: 'fb-list', btn: 'Meine Meldungen' },
-    ],
-  },
-  {
-    id: '2026-11-13-fold',
-    date: '2026-11-13',
-    label: '✨ Neue Funktionen',
-    items: [
-      { icon: '📱', title: 'iPhone Duo, Galaxy Fold & Flip', text: 'Ob Außendisplay, aufgeklappt oder quer: Die App passt sich jetzt jedem Bildschirm an.' },
-      { icon: '🪟', title: 'Aufgeklappt mehr sehen', text: 'Auf großen Faltbildschirmen zeigt die Startseite zwei Spalten nebeneinander.' },
-      { icon: '↔️', title: 'Zwei Bildschirme', text: 'Auf Geräten mit Scharnier (z. B. Surface Duo) bleibt links die App, rechts öffnen sich Chats. So verschwindet nichts im Knick.' },
     ],
   },
   {
