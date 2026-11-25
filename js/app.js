@@ -430,7 +430,7 @@ addEventListener('resize', syncKbOpen);
 window.visualViewport?.addEventListener('resize', syncKbOpen);
 document.addEventListener('focusin', () => setTimeout(syncKbOpen, 60));
 document.addEventListener('focusout', () => setTimeout(syncKbOpen, 60));
-/** Senden-Knopf: sofort senden, Tastatur bleibt offen (sonst klappt sie zuerst zu und der Tipp geht daneben) */
+/** Senden-Knopf: sendet mit EINEM Tipp (sonst klappt die Tastatur zuerst zu und der Tipp geht daneben) */
 function keepKeyboardOnSend(btn, form) {
   if (!btn) return;
   btn.addEventListener('mousedown', (e) => e.preventDefault()); // Maus: Fokus im Eingabefeld lassen
@@ -2343,7 +2343,8 @@ function chatSheet(id) {
         sendDm(id, { text, ...replyData() });
         setReply(null);
         setTimeout(() => { list.scrollTop = list.scrollHeight; }, 60);
-        ta.focus();
+        // Handy/Tablet: Tastatur nach dem Senden schließen (öffnet sich nur durch Antippen des Felds); PC: weiterschreiben
+        if (matchMedia('(hover: none) and (pointer: coarse)').matches) ta.blur(); else ta.focus();
       };
       holdRec = attachHoldToRecord({
         form: f, mic: $('#dm-mic', f), to: id,
@@ -3847,6 +3848,7 @@ function commentsSheet(id) {
         if (!text) return;
         ctEl.innerHTML = '';
         postComment({ text });
+        if (matchMedia('(hover: none) and (pointer: coarse)').matches) ctEl.blur(); // Tastatur zu
       };
       $('#c-stk', api.el).onclick = () => stickerPanel(null, {}, null, { hint: 'Antippen, um mit dem Sticker zu kommentieren', onPick: (sticker) => postComment({ sticker }) });
       // Sticker aus der Tastatur / eingefügte Bilder → als Sticker kommentieren
