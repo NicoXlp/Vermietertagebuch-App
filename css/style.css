@@ -1781,14 +1781,15 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 .dm-sticker { display: block; width: auto; height: auto; max-width: 150px; max-height: 150px; filter: drop-shadow(0 2px 5px rgba(0,0,0,.28)); -webkit-user-drag: none; }
 .stk-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -2px 2px 12px; }
 .link-btn { background: none; border: 0; padding: 4px 2px; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; }
-.stk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; }
-.stk-tile { position: relative; aspect-ratio: 1; border-radius: 20px; border: 0; padding: 0; background: var(--fill); display: grid; place-items: center; cursor: pointer; color: var(--text); }
+.stk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); gap: 8px; }
+.stk-tile { position: relative; aspect-ratio: 1; min-width: 0; min-height: 0; overflow: visible; border-radius: 18px; border: 0; padding: 0; background: var(--fill); display: grid; place-items: center; cursor: pointer; color: var(--text); }
 .stk-tile:active { transform: scale(.95); }
-.stk-tile img { max-width: 84%; max-height: 84%; filter: drop-shadow(0 2px 4px rgba(0,0,0,.25)); pointer-events: none; }
+/* Sticker immer ins Quadrat einpassen – hohe oder breite Sticker strecken die Kachel nicht mehr */
+.stk-tile img { position: absolute; inset: 8%; width: 84%; height: 84%; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0,0,0,.25)); pointer-events: none; }
 .stk-new { align-content: center; gap: 4px; border: 2px dashed color-mix(in srgb, var(--text) 25%, transparent); background: none; text-align: center; }
-.stk-new span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--accent-btn, var(--accent)); color: var(--on-accent, #fff); margin: 0 auto; }
+.stk-new span { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-btn, var(--accent)); color: var(--on-accent, #fff); margin: 0 auto; }
 .stk-new span svg { width: 18px; height: 18px; }
-.stk-new small { font-size: 11px; font-weight: 700; line-height: 1.2; padding: 0 4px; }
+.stk-new small { font-size: 10.5px; font-weight: 700; line-height: 1.15; padding: 0 3px; }
 .stk-x { position: absolute; top: -5px; right: -5px; width: 24px; height: 24px; border-radius: 50%; background: #ff453a; color: #fff; display: grid; place-items: center; }
 .stk-x svg { width: 13px; height: 13px; }
 .stk-grid.editing .stk-tile[data-stk] { animation: stkWiggle .28s ease-in-out infinite alternate; }
@@ -1961,3 +1962,12 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
   .stk-shapes .chip { font-size: 11px; padding: 6px 1px; }
   .stk-shapes .chip .e { font-size: 16px; }
 }
+
+/* ─── Sticker-Sammlung: lückenlos aneinandergereiht ─── */
+.stk-grid { display: block; }
+.stk-rows { display: flex; flex-direction: column; gap: 8px; }
+.stk-line { display: flex; gap: 8px; }
+.stk-line .stk-tile { flex: none; min-width: 0; height: 100%; aspect-ratio: auto; padding: 6px; display: block; border-radius: 14px; }
+.stk-line .stk-tile[data-stk] img { position: static; inset: auto; display: block; width: 100%; height: 100%; object-fit: contain; }
+.stk-line .stk-new { display: grid; place-items: center; align-content: center; padding: 2px; }
+.stk-grid .stk-hint { margin-top: 10px; }

@@ -2540,13 +2540,46 @@ function stickerPanel(to, extra = {}, onSent, { hint = '', onPick = null } = {})
         editBtn.hidden = !stickerLibOf().length;
         editBtn.textContent = editing ? 'Fertig' : 'Bearbeiten';
         grid.classList.toggle('editing', editing);
-        grid.innerHTML = `<label class="stk-tile stk-new" aria-label="Neuen Sticker erstellen"><span>${I.plus}</span><small>Neuer Sticker</small><input type="file" accept="image/*" hidden id="stk-file"></label>`
-          + stickerLibOf().map((s) => `<button type="button" class="stk-tile" data-stk="${s.id}" aria-label="Sticker senden"><img alt="" src="${esc(s.data)}">${editing ? `<span class="stk-x" aria-label="Löschen">${I.close}</span>` : ''}</button>`).join('')
-          + (stickerLibOf().length ? '' : '<p class="small muted stk-hint">Erstelle deinen ersten Sticker aus einem Foto: Form wählen oder frei mit dem Finger ausschneiden ✂️</p>');
+        // Lückenlos „schlau aneinandergereiht“ (wie eine Fotogalerie): jede Zeile wird mit Stickern in ihrem
+        // echten Format gefüllt und dann genau so hoch gemacht, dass sie die Breite exakt ausfüllt – keine Löcher.
+        const lib = stickerLibOf();
+        const W = Math.floor(grid.clientWidth || api.body.clientWidth - 32 || 320), GAP = 8, H = W < 420 ? 92 : 108;
+        const items = [{ ar: 1, html: `<label class="stk-tile stk-new" aria-label="Neuen Sticker erstellen"><span>${I.plus}</span><small>Neuer Sticker</small><input type="file" accept="image/*" hidden id="stk-file"></label>` }]
+          .concat(lib.map((st) => ({
+            ar: Math.max(0.5, Math.min(2.2, (+st.w || 1) / (+st.h || 1))), // sehr schmale/breite Sticker etwas begrenzen
+            html: `<button type="button" class="stk-tile" data-stk="${st.id}" aria-label="Sticker senden"><img alt="" src="${esc(st.data)}">${editing ? `<span class="stk-x" aria-label="Löschen">${I.close}</span>` : ''}</button>`,
+          })));
+        const rows = []; let row = [];
+        const rowW = (r, h) => r.reduce((a, it) => a + it.ar * h, 0) + GAP * (r.length - 1);
+        for (const it of items) {
+          row.push(it);
+          if (rowW(row, H) >= W) { rows.push({ items: row, full: true }); row = []; }
+        }
+        if (row.length) {
+          // dünn besetzte letzte Zeile (viel Leerraum) in die Zeile davor ziehen – die wird dafür etwas niedriger
+          const prev = rows[rows.length - 1];
+          const merged = prev && [...prev.items, ...row];
+          if (prev && rowW(row, H) < W * 0.6 && (W - GAP * (merged.length - 1)) / merged.reduce((a, it) => a + it.ar, 0) >= 58) prev.items = merged;
+          else rows.push({ items: row, full: false });
+        }
+        const rowsHtml = rows.map((r) => {
+          const sumAr = r.items.reduce((a, it) => a + it.ar, 0);
+          if (r.full) {
+            // volle Zeile: Höhe passend zur Breite; Breiten anteilig nach Format → füllt die Zeile immer exakt
+            const h = (W - GAP * (r.items.length - 1)) / sumAr;
+            return `<div class="stk-line" style="height:${h.toFixed(1)}px">${r.items.map((it) => it.html.replace(/^<(label|button) /, `<$1 style="flex:${it.ar.toFixed(4)} 1 0" `)).join('')}</div>`;
+          }
+          const h = Math.min(H, (W - GAP * (r.items.length - 1)) / sumAr); // letzte Zeile: normale Höhe, linksbündig
+          return `<div class="stk-line" style="height:${h.toFixed(1)}px">${r.items.map((it) => it.html.replace(/^<(label|button) /, `<$1 style="width:${(it.ar * h).toFixed(1)}px" `)).join('')}</div>`;
+        }).join('');
+        grid.innerHTML = `<div class="stk-rows">${rowsHtml}</div>`
+          + (lib.length ? '' : '<p class="small muted stk-hint">Erstelle deinen ersten Sticker aus einem Foto: automatisch, mit einer Form oder frei mit dem Finger ausschneiden ✂️</p>');
         $('#stk-file', grid).onchange = (e) => { const file = e.target.files[0]; e.target.value = ''; if (file) stickerEditor(file); };
       };
       stickerListeners.add(draw);
       draw();
+      let lastW = grid.clientWidth;
+      try { new ResizeObserver(() => { if (Math.abs(grid.clientWidth - lastW) > 2) { lastW = grid.clientWidth; draw(); } }).observe(grid); } catch { /* ältere Browser */ }
       editBtn.onclick = () => { editing = !editing; draw(); };
       grid.addEventListener('click', async (e) => {
         const b = e.target.closest('[data-stk]');
