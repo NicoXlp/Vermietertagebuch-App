@@ -1740,7 +1740,7 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
     transform: translateY(-50%); width: 76px; transition: none;
   }
   html:not(.phone-ua) .tabbar { flex-direction: column; height: auto; width: 76px; border-radius: 38px; }
-  html:not(.phone-ua) .tab { flex: none; height: 62px; width: 100%; }
+  html:not(.phone-ua) .tab { flex: none; height: 68px; width: 100%; border-radius: 34px; } /* 68 = Leistenbreite 76 − 2×4 → Regler ist ein exakter Kreis */
   html:not(.phone-ua) .tab svg { width: 25px; height: 25px; }
   html:not(.phone-ua) .lens { top: 0; bottom: auto; left: 4px; right: 4px; width: auto; }
   html:not(.phone-ua) .tab .badge { top: 6px; left: calc(50% + 6px); }
@@ -1899,4 +1899,4 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
    so ist der Abstand zum Rand überall gleich – unten (Handy), rechts (iPad/Tablet/PC) und auf niedrigen Displays */
 .lens-glass { border-radius: 28px; }
 @media (max-height: 540px) and (max-width: 600px) { .tabbar { border-radius: 27px; } .lens-glass { border-radius: 23px; } }
-@media (min-width: 700px) and (min-height: 500px) { html:not(.phone-ua) .lens-glass { border-radius: 31px; } } /* halbe Höhe (62 px) – Leiste bleibt gleich groß */
+@media (min-width: 700px) and (min-height: 500px) { html:not(.phone-ua) .lens-glass { border-radius: 34px; } } /* Kreis, konzentrisch zur Leiste (38 − 4) */
