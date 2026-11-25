@@ -1411,17 +1411,17 @@ html.sheet-open, html.sheet-open body { overflow: hidden; overscroll-behavior: n
 .pv-name { font-size: 22px; font-weight: 750; letter-spacing: -.01em; }
 .btn.danger-soft { margin-top: 18px; background: transparent; box-shadow: none; color: var(--danger); font-weight: 600; }
 
-/* ═══ Faltbare Handys (Galaxy Fold/Flip, Surface Duo …) & sehr kleine Displays ═══ */
+/* ═══ Kleine Displays ═══ */
 .section-title { flex-wrap: wrap; gap: 4px 12px; }
 .banner button { margin-left: auto; }
 
-/* Aufgeklappte Foldables (fast quadratisch): Startseite schon zweispaltig */
+/* Tablets & große Bildschirme: Startseite zweispaltig */
 @media (min-width: 720px) {
   .view { max-width: 980px; }
   .home-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 0 22px; align-items: start; }
 }
 
-/* Sehr schmal (z. B. Außendisplay älterer Galaxy Folds, ~280 px) */
+/* Sehr schmale Handys (z. B. iPhone SE 1. Generation, 320 px) */
 @media (max-width: 340px) {
   .view { padding-left: 10px; padding-right: 10px; }
   .chips { margin-left: -10px; margin-right: -10px; padding-left: 10px; padding-right: 10px; }
@@ -1443,7 +1443,7 @@ html.sheet-open, html.sheet-open body { overflow: hidden; overscroll-behavior: n
   .dm-bar .dm-tool { width: 34px; height: 34px; }
 }
 
-/* Niedrige Displays (z. B. Außendisplay Galaxy Z Flip) */
+/* Niedrige Displays (z. B. kleine Handys im Querformat) */
 @media (max-height: 540px) and (max-width: 600px) {
   .view { padding-top: calc(var(--safe-t) + 6px); padding-bottom: calc(var(--safe-b) + 74px); }
   .top { margin: 4px 4px 12px; }
@@ -1459,31 +1459,6 @@ html.sheet-open, html.sheet-open body { overflow: hidden; overscroll-behavior: n
   .sp-card { zoom: .78; }
 }
 
-/* Zwei Bildschirme nebeneinander (Surface Duo, aufgeklappt mit Scharnier):
-   links die App, rechts öffnen sich Chats & Fenster – nichts liegt im Scharnier */
-@media (horizontal-viewport-segments: 2) {
-  .view { width: env(viewport-segment-width 0 0); max-width: none; margin: 0; }
-  .home-grid { display: block; }
-  .dock { left: calc(env(viewport-segment-width 0 0) / 2); width: min(env(viewport-segment-width 0 0) - 24px, 520px); }
-  .sheet-wrap, .dm-sheet.sheet-wrap { left: env(viewport-segment-left 1 0); align-items: center; padding: calc(var(--safe-t) + 12px) 12px calc(var(--safe-b) + 12px); }
-  .sheet { border-radius: 28px; max-height: 100%; }
-  .dm-sheet .sheet { height: 100%; }
-  #toasts { left: calc(env(viewport-segment-width 0 0) / 2); width: min(env(viewport-segment-width 0 0) - 24px, 420px); }
-}
-
-/* Zwei Bildschirme übereinander (halb aufgeklappt, z. B. Flex-Modus):
-   oben lesen, Navigation unten – nichts liegt im Knick */
-@media (vertical-viewport-segments: 2) {
-  .view { padding-bottom: calc(env(viewport-segment-height 0 1) + 30px); }
-  .dock { bottom: auto; top: calc(env(viewport-segment-top 0 1) + (env(viewport-segment-height 0 1) - 64px) / 2); }
-  .sheet-wrap, .dm-sheet.sheet-wrap { align-items: flex-start; padding: calc(var(--safe-t) + 8px) 10px calc(100dvh - env(viewport-segment-bottom 0 0) + 8px); }
-  .sheet { border-radius: 28px; max-height: 100%; }
-  .dm-sheet .sheet { height: 100%; }
-}
-@media (max-width: 300px) {
-  .tabbar { height: 56px; }
-  .tab svg { width: 24px; height: 24px; }
-}
 @media (max-width: 340px) {
   .banner > :not(svg):not(button) { flex: 1 1 calc(100% - 40px); }
   .news-head { flex-wrap: wrap; }
@@ -1492,11 +1467,6 @@ html.sheet-open, html.sheet-open body { overflow: hidden; overscroll-behavior: n
 .banner-txt { flex: 1; }
 @media (max-width: 340px) { .banner .banner-txt { flex: 1 1 calc(100% - 40px); } }
 
-/* Aufgeklapptes iPhone Fold (4:3, ca. 640 px breit): Startseite ebenfalls zweispaltig */
-@media (min-width: 620px) and (min-height: 560px) {
-  .view { max-width: 980px; }
-  .home-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 0 18px; align-items: start; }
-}
 
 /* „Neues“: ältere Meldungen in der Kachel nachlesen */
 .news-head { margin-bottom: 4px; }
@@ -1587,10 +1557,6 @@ html, body { min-height: 100%; }
   .dm-sheet .sheet { height: 100%; }
 }
 @media (max-width: 699px) and (prefers-reduced-motion: reduce) { .sheet { transition: opacity .15s; transform: none; } }
-/* Faltbare Geräte im Flex-Modus: Fenster weiterhin nur in der oberen Hälfte */
-@media (vertical-viewport-segments: 2) {
-  .sheet-wrap, .dm-sheet.sheet-wrap { align-items: flex-start; padding: calc(var(--safe-t) + 8px) 10px calc(100dvh - env(viewport-segment-bottom 0 0) + 8px); }
-}
 
 /* Ausgleich, falls iOS den App-Bereich nach der Tastatur verkleinert lässt (siehe fixIosGap) */
 .dock { bottom: calc(max(14px, calc(var(--safe-b) + 4px)) - var(--ios-gap, 0px)); transition: bottom .25s ease; }
@@ -1765,7 +1731,7 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 }
 
 /* ═══ iPad, Tablet & PC: Navigationsleiste senkrecht am rechten Rand, mittig in der Höhe ═══
-   (Handys – auch quer, auch aufgeklappte Falt-Handys auf Android – behalten die Leiste unten.) Der Inhalt bekommt rechts Platz,
+   (Handys – auch quer – behalten die Leiste unten.) Der Inhalt bekommt rechts Platz,
    damit die Leiste nie etwas verdeckt. */
 @media (min-width: 700px) and (min-height: 500px) {
   html:not(.phone-ua) .dock {
