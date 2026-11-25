@@ -26,8 +26,8 @@ export const NEWS = [
     label: '🛠️ Bug-Fixes',
     items: [
       { icon: '💬', title: 'Privatchats öffnen ganz unten', text: 'Beim Öffnen eines Privatchats siehst du jetzt immer sofort die neueste Nachricht. Vorher landete die Ansicht manchmal mittendrin, weil Sticker und Bilder erst etwas später geladen wurden.' },
-      { icon: '🗑️', title: 'Kein versehentliches Abhaken', text: 'Auf der Startseite lassen sich Tonnen nicht mehr als rausgestellt markieren, weil man den Knopf zu leicht aus Versehen getroffen hat. Abhaken geht jetzt im Bereich Müll.', act: 'tab', v: 'trash', btn: 'Zum Abholplan' },
-      { icon: '✅', title: 'Aufgaben auf der Startseite', text: 'Auch Aufgaben lassen sich auf der Startseite nicht mehr abhaken, weil das oft aus Versehen passiert ist. Abhaken geht jetzt im Bereich Aufgaben.', act: 'tab', v: 'tasks', btn: 'Zu den Aufgaben' },
+      { icon: '🗑️', title: 'Kein versehentliches Abhaken', text: 'Auf der Startseite lassen sich Tonnen nicht mehr als rausgestellt markieren, weil man den Knopf zu leicht versehentlich getroffen hat. Abhaken geht jetzt im Bereich Müll.', act: 'tab', v: 'trash', btn: 'Zum Abholplan' },
+      { icon: '✅', title: 'Aufgaben auf der Startseite', text: 'Auch Aufgaben lassen sich auf der Startseite nicht mehr abhaken, weil das oft versehentlich passiert ist. Abhaken geht jetzt im Bereich Aufgaben.', act: 'tab', v: 'tasks', btn: 'Zu den Aufgaben' },
       { icon: '🌟', title: 'Sticker in Kommentaren', text: 'Sticker in Kommentaren werden jetzt platzsparend gespeichert. Vorher konnte das Speichern bei Beiträgen mit vielen Sticker-Kommentaren fehlschlagen.' },
       { icon: '👆', title: 'Sticker gedrückt halten', text: 'Langes Drücken auf einen Sticker öffnet jetzt zuverlässig das Menü der App statt des Bild-Menüs vom iPhone.' },
     ],
@@ -60,7 +60,7 @@ export const NEWS = [
     date: '2026-11-23',
     label: '❗ Wichtiges',
     items: [
-      { icon: '🔒', title: 'Schütze dein Profil mit einer PIN', text: 'Ab sofort kannst du dein Profil mit einer persönlichen PIN aus 4 bis 8 Ziffern schützen, die du dir selbst aussuchst. Dann kann niemand mehr aus Versehen in dein Profil wechseln. Du findest die Einstellung unter „Profil wechseln“. Die Einstellung ist freiwillig, aber sie schützt deine Privatsphäre, zum Beispiel deine Privatchats.', act: 'switch-user', btn: 'PIN festlegen' },
+      { icon: '🔒', title: 'Schütze dein Profil mit einer PIN', text: 'Ab sofort kannst du dein Profil mit einer persönlichen PIN aus 4 bis 8 Ziffern schützen, die du dir selbst aussuchst. Dann kann niemand mehr versehentlich in dein Profil wechseln. Du findest die Einstellung unter „Profil wechseln“. Die Einstellung ist freiwillig, aber sie schützt deine Privatsphäre, zum Beispiel deine Privatchats.', act: 'switch-user', btn: 'PIN festlegen' },
     ],
   },
   {
