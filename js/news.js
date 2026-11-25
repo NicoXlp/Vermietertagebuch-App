@@ -5,6 +5,16 @@
 // Bitte keine Browser-APIs hier verwenden.
 export const NEWS = [
   {
+    id: '2026-11-25-fixes',
+    date: '2026-11-25',
+    label: '🛠️ Bug-Fixes',
+    items: [
+      { icon: '🌟', title: 'Sticker in Kommentaren', text: 'Sticker in Kommentaren werden jetzt platzsparend gespeichert. Vorher konnte das Speichern bei Beiträgen mit vielen Sticker-Kommentaren fehlschlagen.' },
+      { icon: '📌', title: 'Angepinnter Chat', text: 'Der angepinnte Chat gilt jetzt für jedes Profil einzeln. Auf geteilten Geräten sieht niemand mehr den angepinnten Chat einer anderen Person.' },
+      { icon: '👆', title: 'Sticker gedrückt halten', text: 'Langes Drücken auf einen Sticker öffnet jetzt zuverlässig das Menü der App statt des Bild-Menüs vom iPhone.' },
+    ],
+  },
+  {
     id: '2026-11-24-neu',
     date: '2026-11-24',
     label: '✨ Neue Funktionen',

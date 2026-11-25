@@ -2493,7 +2493,7 @@ function stickerPanel(to, extra = {}, onSent, { hint = '', onPick = null } = {})
 }
 
 /** Bild (z. B. Sticker aus der Tastatur) → Sticker-Daten, höchstens 384 px, Transparenz bleibt erhalten */
-async function imageToSticker(src) {
+async function imageToSticker(src, { max = 384, limit = 260_000 } = {}) {
   const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Bild nicht lesbar')); i.src = src; });
   const enc = (max) => {
     const f = Math.min(1, max / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
@@ -2503,9 +2503,9 @@ async function imageToSticker(src) {
     if (!d.startsWith('data:image/webp')) d = c.toDataURL('image/png');
     return { data: d, w: c.width, h: c.height };
   };
-  let out = enc(384);
-  if (out.data.length > 260_000) out = enc(288);
-  if (out.data.length > 260_000) out = enc(224);
+  // so lange verkleinern, bis das Bild klein genug ist (Safari speichert nur PNG – das wird schnell groß)
+  let size = max, out = enc(size);
+  while (out.data.length > limit && size > 96) { size = Math.round(size * 0.8); out = enc(size); }
   return out;
 }
 function placeCaretEnd(el) {
@@ -2790,8 +2790,8 @@ function dmListSheet() {
         const pb = e.target.closest('[data-pin]');
         if (pb) {
           const id = pb.dataset.pin, was = dmPinned();
-          if (was === id) { LS.del('dmPin'); toast('Chat gelöst'); }
-          else { LS.set('dmPin', id); toast(was && member(was) ? `📌 ${dn(id)} angepinnt (statt ${dn(was)})` : `📌 ${dn(id)} angepinnt`); }
+          if (was === id) { LS.del(`dmPin_${state.me}`); toast('Chat gelöst'); }
+          else { LS.set(`dmPin_${state.me}`, id); toast(was && member(was) ? `📌 ${dn(id)} angepinnt (statt ${dn(was)})` : `📌 ${dn(id)} angepinnt`); }
           haptic(10);
           $('#dml', api.el).innerHTML = html();
           return;
@@ -2802,7 +2802,12 @@ function dmListSheet() {
   });
 }
 /** Angepinnter Chat (höchstens einer, auf diesem Gerät) */
-function dmPinned() { const id = LS.get('dmPin', null); return id && member(id) && id !== state.me ? id : null; }
+function dmPinned() {
+  // je Profil gemerkt (auf geteilten Geräten sieht niemand den angepinnten Chat einer anderen Person)
+  if (LS.get('dmPin', null) && !LS.get(`dmPin_${state.me}`, null)) { LS.set(`dmPin_${state.me}`, LS.get('dmPin', null)); LS.del('dmPin'); }
+  const id = LS.get(`dmPin_${state.me}`, null);
+  return id && member(id) && id !== state.me ? id : null;
+}
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -3573,7 +3578,14 @@ function commentsSheet(id) {
           e.preventDefault(); $('#cf', api.el).requestSubmit();
         }
       });
-      const postComment = ({ text = '', sticker = null }) => {
+      const postComment = async ({ text = '', sticker = null }) => {
+        if (sticker) {
+          try { sticker = await imageToSticker(sticker.data, { max: 224, limit: 60_000 }); } catch { /* Original verwenden */ }
+          const post = state.feed.find((x) => x.id === id);
+          if (post && JSON.stringify(post).length + sticker.data.length > 900_000) {
+            return toast('Dieser Beitrag hat schon sehr viele Sticker – bitte als Text kommentieren 🙏', 4500);
+          }
+        }
         haptic(8);
         const replyTo = reply;
         const target = replyTo ? (state.feed.find((x) => x.id === id)?.comments || []).find((c) => c.id === replyTo) : null;

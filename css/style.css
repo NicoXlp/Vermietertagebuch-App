@@ -1918,3 +1918,6 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 .bin-done-item .main { min-width: 0; }
 .list-item .sub.bin-done-by { display: block; color: var(--text-2); }
 .bin-done-by b { color: var(--text); font-weight: 600; }
+
+/* Sticker gedrückt halten → App-Menü statt „Bild sichern“ (iPhone) */
+.dm-sticker, .c-sticker, .lc-sticker, .stk-tile img { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
