@@ -5,6 +5,14 @@
 // Bitte keine Browser-APIs hier verwenden.
 export const NEWS = [
   {
+    id: '2026-11-25-fixes-3',
+    date: '2026-11-25',
+    label: '🛠️ Bug-Fixes',
+    items: [
+      { icon: '💬', title: 'Privatchats öffnen ganz unten', text: 'Beim Öffnen eines Privatchats siehst du jetzt immer sofort die neueste Nachricht. Vorher landete die Ansicht manchmal mittendrin, weil Sticker und Bilder erst etwas später geladen wurden.' },
+    ],
+  },
+  {
     id: '2026-11-25-neu',
     date: '2026-11-25',
     label: '✨ Neue Funktionen',
