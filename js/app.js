@@ -124,7 +124,6 @@ const I = {
   pause: '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4.2" height="14" rx="1.4"/><rect x="13.8" y="5" width="4.2" height="14" rx="1.4"/></svg>',
   photo: svg('<rect x="3" y="5" width="18" height="15" rx="3.5"/><circle cx="12" cy="12.5" r="3.6"/><path d="M8.5 5 10 3h4l1.5 2"/>'),
   sticker: svg('<path d="M20.5 13.5V7A3.5 3.5 0 0 0 17 3.5H7A3.5 3.5 0 0 0 3.5 7v10A3.5 3.5 0 0 0 7 20.5h6.5z"/><path d="M13.5 20.5v-3.5a3.5 3.5 0 0 1 3.5-3.5h3.5"/><path d="M8.5 10h.01M14.5 10h.01M9 14c1.6 1.2 3.4 1.2 5 0"/>'),
-  pin: svg('<path d="M9 3.5h6l-1 5.5 3.5 3.5v1.5h-11V12.5L10 9z"/><path d="M12 14v6.5"/>'),
   mic: svg('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>'),
   house: svg('<path d="M3 11 12 4l9 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/>'),
 };
@@ -3015,16 +3014,15 @@ function dmListSheet() {
     const others = membersSorted().filter((m) => m.id !== state.me);
     if (!others.length) return '<div class="empty"><div class="big">💬</div>Noch niemand außer dir im Haus.</div>';
     const last = (id) => dmWith(id).at(-1);
-    const pin = dmPinned();
-    others.sort((a, b) => (b.id === pin) - (a.id === pin) || (last(b.id)?.createdAt || 0) - (last(a.id)?.createdAt || 0));
+    others.sort((a, b) => (last(b.id)?.createdAt || 0) - (last(a.id)?.createdAt || 0));
     return `<div class="list card tight">${others.map((m) => {
-      const l = last(m.id), n = dmUnread(m.id), pinned = m.id === pin;
-      return `<div class="dm-row ${pinned ? 'pinned' : ''}"><button class="list-item" data-dm="${m.id}">
+      const l = last(m.id), n = dmUnread(m.id);
+      return `<button class="list-item" data-dm="${m.id}">
         ${avatar(m.id, 44)}
         <div class="main"><div class="title">${esc(dn(m.id))}${m.floor ? ` <span class="floor-tag">${esc(floorName(m.floor))}</span>` : ''}</div>
           <div class="sub ${n ? 'strong' : ''}">${l ? esc(dmPreview(l)) : 'Noch keine Nachrichten'}</div></div>
         <div class="dm-side">${l ? `<span class="small muted">${esc(shortTime(l.createdAt))}</span>` : ''}${n ? `<b class="badge">${n}</b>` : ''}</div>
-      </button><button class="dm-pin ${pinned ? 'on' : ''}" data-pin="${m.id}" aria-pressed="${pinned}" aria-label="${pinned ? 'Chat lösen' : 'Chat anpinnen'}" title="${pinned ? 'Lösen' : 'Anpinnen'}">${I.pin}</button></div>`;
+      </button>`;
     }).join('')}</div>
     <p class="small muted center" style="margin:14px 8px 0">🔒 Privatnachrichten sehen nur die beiden Personen im Chat.</p>`;
   };
@@ -3033,28 +3031,12 @@ function dmListSheet() {
     html: `<div id="dml">${html()}</div>`,
     refresh: (api) => { $('#dml', api.el).innerHTML = html(); },
     onMount: (api) => {
-      api.body.addEventListener('click', (e) => {
-        const pb = e.target.closest('[data-pin]');
-        if (pb) {
-          const id = pb.dataset.pin, was = dmPinned();
-          if (was === id) { LS.del(`dmPin_${state.me}`); toast('Chat gelöst'); }
-          else { LS.set(`dmPin_${state.me}`, id); toast(was && member(was) ? `📌 ${dn(id)} angepinnt (statt ${dn(was)})` : `📌 ${dn(id)} angepinnt`); }
-          haptic(10);
-          $('#dml', api.el).innerHTML = html();
-          return;
-        }
-        const b = e.target.closest('[data-dm]'); if (b) chatSheet(b.dataset.dm);
-      });
+      api.body.addEventListener('click', (e) => { const b = e.target.closest('[data-dm]'); if (b) chatSheet(b.dataset.dm); });
     },
   });
 }
-/** Angepinnter Chat (höchstens einer, auf diesem Gerät) */
-function dmPinned() {
-  // je Profil gemerkt (auf geteilten Geräten sieht niemand den angepinnten Chat einer anderen Person)
-  if (LS.get('dmPin', null) && !LS.get(`dmPin_${state.me}`, null)) { LS.set(`dmPin_${state.me}`, LS.get('dmPin', null)); LS.del('dmPin'); }
-  const id = LS.get(`dmPin_${state.me}`, null);
-  return id && member(id) && id !== state.me ? id : null;
-}
+// Früher gemerkte angepinnte Chats aufräumen (Funktion wurde entfernt)
+try { Object.keys(localStorage).filter((k) => /^vt\.dmPin(_|$)/.test(k)).forEach((k) => localStorage.removeItem(k)); } catch { /* egal */ }
 
 
 /* ═══════════════════════════════════════════════════════════════════════════

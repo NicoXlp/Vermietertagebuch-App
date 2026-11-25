@@ -1817,15 +1817,6 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 .dm-input:empty::before { content: attr(data-ph); color: var(--text-3); pointer-events: none; }
 .dm-input img { max-height: 1.4em; vertical-align: middle; }
 
-/* ─── Chat anpinnen ─── */
-.dm-row { position: relative; display: flex; align-items: stretch; }
-.dm-row .list-item { flex: 1; min-width: 0; padding-right: 4px; }
-.dm-pin { flex: none; width: 44px; display: grid; place-items: center; color: var(--text-3); background: none; border: 0; cursor: pointer; }
-.dm-pin svg { width: 19px; height: 19px; transform: rotate(35deg); transition: transform .25s var(--spring); }
-.dm-pin.on { color: var(--accent); }
-.dm-pin.on svg { fill: currentColor; transform: rotate(0deg); }
-.dm-pin:active svg { transform: scale(.85); }
-.dm-row.pinned { background: color-mix(in srgb, var(--accent) 7%, transparent); border-radius: calc(var(--r-lg) - 6px); } /* rund wie die Kachel, nur innen */
 
 /* ─── Profil-PIN ─── */
 .news-badge.important, .news-badge.old.important { background: #ff9f0a; color: #1a1000; }
@@ -1890,10 +1881,6 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
 
 /* Gedrückt-Halten: Hervorhebung rund wie die Kachel (statt eckiger grauer Kasten) */
 .list.card.tight .list-item, .card.tight > .list-item { border-radius: calc(var(--r-lg) - 6px); }
-.dm-row { border-radius: calc(var(--r-lg) - 6px); transition: background .15s; }
-.dm-row .list-item:active:not(:has(button:active)) { background: none; }
-.dm-row:has(.list-item:active) { background: var(--fill); }
-.dm-row.pinned:has(.list-item:active) { background: color-mix(in srgb, var(--accent) 14%, var(--fill)); }
 
 /* Schieberegler (Linse) sitzt perfekt: Rundung = Rundung der Leiste minus Innenabstand (4 px),
    so ist der Abstand zum Rand überall gleich – unten (Handy), rechts (iPad/Tablet/PC) und auf niedrigen Displays */
