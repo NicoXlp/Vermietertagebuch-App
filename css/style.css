@@ -2008,22 +2008,9 @@ html.xmas .profile-photo .av::before, html.xmas .profile-view .av::before { disp
   70% { opacity: 1; }
   100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 40px)) rotate(var(--rot)) scale(1); }
 }
-.xg-banner {
-  position: fixed !important; left: var(--bx, 50%) !important; top: calc(var(--y) + 46px) !important;
-  transform: translateX(-50%) scale(.3); opacity: 0; white-space: nowrap;
-  animation: xgBanner .7s .15s cubic-bezier(.2, 1.4, .4, 1) forwards;
-}
-.xg-banner span {
-  display: inline-block; padding: 8px 22px 10px; border-radius: 999px;
-  background: linear-gradient(135deg, #d62839, #a5122a); border: 2px solid #f3c969;
-  color: #fff; font: 700 28px/1.1 "Snell Roundhand", "Segoe Script", "Brush Script MT", "Lucida Handwriting", cursive;
-  text-shadow: 0 2px 0 rgba(0,0,0,.25), 0 0 14px rgba(255, 215, 120, .7);
-  box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.35);
-}
-@keyframes xgBanner { to { transform: translateX(-50%) scale(1); opacity: 1; } }
 .xg-fx.out { transition: opacity .45s ease; opacity: 0; }
-.xg-fx.calm .xg-hop, .xg-fx.calm .xg-bit { display: none; }
-.xg-fx.calm .xg-banner { animation: xgFade .3s forwards; transform: translateX(-50%); }
-@keyframes xgFade { to { opacity: 1; } }
+/* „Bewegung reduzieren“: nur kurz der Weihnachtsmann, ohne Herumfliegen */
+.xg-fx.calm .xg-bit { display: none; }
+.xg-fx.calm .xg-hop { animation-duration: 1.4s; }
 /* Breite Bildschirme (Überschrift einzeilig, oben kein Platz): Easter Egg links neben die Knöpfe */
 @media (min-width: 600px) { .xegg { bottom: auto; top: 50%; left: auto; right: calc(100% + 12px); transform: translateY(-50%); } }
