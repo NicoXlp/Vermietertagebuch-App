@@ -5,6 +5,22 @@
 // Bitte keine Browser-APIs hier verwenden.
 export const NEWS = [
   {
+    id: '2026-11-25-neu',
+    date: '2026-11-25',
+    label: '✨ Neue Funktionen',
+    items: [
+      { icon: '🎤', title: 'Sprachnachrichten gedrückt halten', text: 'Im Privatchat kannst du den Mikrofon-Knopf jetzt gedrückt halten, um eine Sprachnachricht aufzunehmen. Loslassen sendet sie, nach links wischen bricht ab. Wischst du nach oben, rastet die Aufnahme ein und du kannst freihändig weitersprechen.' },
+    ],
+  },
+  {
+    id: '2026-11-25-fixes-2',
+    date: '2026-11-25',
+    label: '🛠️ Bug-Fixes',
+    items: [
+      { icon: '🗑️', title: 'Kein versehentliches Abhaken', text: 'Auf der Startseite lassen sich Tonnen nicht mehr als rausgestellt markieren, weil man den Knopf zu leicht aus Versehen getroffen hat. Abhaken geht jetzt im Bereich Müll.', act: 'tab', v: 'trash', btn: 'Zum Abholplan' },
+    ],
+  },
+  {
     id: '2026-11-25-fixes',
     date: '2026-11-25',
     label: '🛠️ Bug-Fixes',
